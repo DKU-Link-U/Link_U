@@ -1,11 +1,12 @@
-import { NavLink, useLocation } from 'react-router-dom'
-import { mockNotifications } from '../models'
+import { NavLink } from 'react-router-dom'
+import { ROUTE_PATHS } from '../routes/paths'
+import { useAppState } from '../store'
 
 const NAV_GROUPS = [
   {
     items: [
       {
-        to: '/',
+        to: ROUTE_PATHS.home,
         label: '홈',
         exact: true,
         icon: (
@@ -20,7 +21,7 @@ const NAV_GROUPS = [
     label: '커뮤니티',
     items: [
       {
-        to: '/ranking',
+        to: ROUTE_PATHS.ranking,
         label: '랭킹',
         icon: (
           <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -29,7 +30,7 @@ const NAV_GROUPS = [
         ),
       },
       {
-        to: '/study',
+        to: ROUTE_PATHS.study.list,
         label: '스터디 게시판',
         icon: (
           <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -39,7 +40,7 @@ const NAV_GROUPS = [
         ),
       },
       {
-        to: '/project',
+        to: ROUTE_PATHS.project.list,
         label: '프로젝트 게시판',
         icon: (
           <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -56,9 +57,9 @@ const NAV_GROUPS = [
     label: '내 활동',
     items: [
       {
-        to: '/notifications',
+        to: ROUTE_PATHS.notifications,
         label: '알림 센터',
-        badge: mockNotifications.filter(n => !n.isRead).length,
+        badgeKey: 'notifications',
         icon: (
           <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path d="M15 17H20L18.595 15.595A2 2 0 0118 14.172V11C18 8.238 16.112 5.923 13.5 5.184V4.5a1.5 1.5 0 00-3 0v.684C7.888 5.923 6 8.238 6 11v3.172a2 2 0 01-.595 1.414L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -66,8 +67,9 @@ const NAV_GROUPS = [
         ),
       },
       {
-        to: '/messages',
+        to: ROUTE_PATHS.messages,
         label: '쪽지함',
+        badgeKey: 'messages',
         icon: (
           <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -75,7 +77,7 @@ const NAV_GROUPS = [
         ),
       },
       {
-        to: '/mypage',
+        to: ROUTE_PATHS.mypage.root,
         label: '마이페이지',
         icon: (
           <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -113,6 +115,18 @@ function NavItem({ to, label, icon, badge, exact }) {
 }
 
 export default function Sidebar() {
+  const {
+    currentUser,
+    rating,
+    unreadMessageCount,
+    unreadNotificationCount,
+  } = useAppState()
+
+  const badges = {
+    messages: unreadMessageCount,
+    notifications: unreadNotificationCount,
+  }
+
   return (
     <aside className="w-56 min-h-screen flex flex-col bg-primary text-white shadow-xl flex-shrink-0">
       {/* 로고 */}
@@ -137,7 +151,11 @@ export default function Sidebar() {
             )}
             <div className="space-y-0.5">
               {group.items.map(item => (
-                <NavItem key={item.to} {...item} />
+                <NavItem
+                  key={item.to}
+                  {...item}
+                  badge={item.badgeKey ? badges[item.badgeKey] : item.badge}
+                />
               ))}
             </div>
           </div>
@@ -147,15 +165,19 @@ export default function Sidebar() {
       {/* 하단 사용자 영역 */}
       <div className="px-4 py-4 border-t border-white/10">
         <NavLink
-          to="/mypage/profile"
+          to={ROUTE_PATHS.mypage.profile}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold flex-shrink-0">
-            H
+            {currentUser?.nickname?.[0] ?? 'U'}
           </div>
           <div className="leading-tight overflow-hidden">
-            <p className="text-xs font-semibold text-white truncate">Hong Gil-dong</p>
-            <p className="text-[10px] text-white/40">Gold · 1200점</p>
+            <p className="text-xs font-semibold text-white truncate">
+              {currentUser?.nickname ?? 'Guest'}
+            </p>
+            <p className="text-[10px] text-white/40">
+              {rating.baekjoonTier} · {rating.totalRatingScore}점
+            </p>
           </div>
         </NavLink>
       </div>

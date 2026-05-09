@@ -1,4 +1,4 @@
-import { mockRating, mockStudyGroups, mockProjects } from '../../models'
+import { mockRating } from '../../models'
 import CommitGrass from '../../components/CommitGrass'
 import LineChartWidget from '../../components/LineChartWidget'
 

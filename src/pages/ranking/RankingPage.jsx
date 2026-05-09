@@ -35,7 +35,6 @@ export default function RankingPage() {
   const [tab, setTab] = useState('overall')
 
   const myEntry = mockRankingList.find(r => r.userId === mockUser.userId)
-  const topList = mockRankingList.filter(r => r.rank <= 5)
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
