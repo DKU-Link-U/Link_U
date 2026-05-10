@@ -1,6 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const authRoutes = require('./routes/authRoutes');
+const recruitmentRoutes = require('./routes/recruitmentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const usersRoutes = require('./routes/usersRoutes');
 require('./config/passport');
@@ -15,6 +16,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/recruitments', recruitmentRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/users', usersRoutes);
 
