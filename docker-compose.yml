@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: linku-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: linku
+      POSTGRES_PASSWORD: linku_password
+      POSTGRES_DB: linku_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - linku_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linku -d linku_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  linku_postgres_data:
