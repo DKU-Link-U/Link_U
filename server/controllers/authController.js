@@ -1,5 +1,6 @@
 const passport = require('passport');
 const { hasGoogleOAuthConfig } = require('../config/passport');
+const { generateAccessToken } = require('../utils/jwt');
 
 function startGoogleLogin(req, res, next) {
   if (!hasGoogleOAuthConfig()) {
@@ -44,7 +45,10 @@ function handleGoogleCallback(req, res, next) {
     return res.json({
       success: true,
       message: 'Google 로그인에 성공했습니다.',
-      data: { user },
+      data: {
+        user,
+        accessToken: generateAccessToken(user),
+      },
     });
   })(req, res, next);
 }

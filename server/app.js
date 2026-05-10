@@ -2,6 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const usersRoutes = require('./routes/usersRoutes');
 require('./config/passport');
 
 const app = express();
@@ -15,6 +16,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/users', usersRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
