@@ -9,9 +9,9 @@ export default function ProjectCreate() {
   const [form, setForm] = useState({ title: '', description: '', techStack: '', capacity: 4, requiredRating: 1000 })
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault()
-    addProject(form)
+    await addProject(form)
     alert('프로젝트 모집글이 등록되었습니다.')
     navigate(ROUTE_PATHS.project.list)
   }
