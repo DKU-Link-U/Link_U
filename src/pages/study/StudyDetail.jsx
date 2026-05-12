@@ -1,13 +1,14 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockStudyGroups } from '../../models'
 import { ROUTE_PATHS } from '../../routes/paths'
-import { useAppState } from '../../store'
+import { useAppState, useStudies } from '../../store'
 
 export default function StudyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { rating } = useAppState()
-  const sg = mockStudyGroups.find(g => g.groupId === id)
+  const { getStudyById, studyApplications, applyStudy } = useStudies()
+  const sg = getStudyById(id)
+  const application = studyApplications[id]
 
   if (!sg) {
     return (
@@ -18,7 +19,7 @@ export default function StudyDetail() {
     )
   }
 
-  const canApply = rating.totalRatingScore >= sg.requiredRating && sg.status === 'recruiting'
+  const canApply = rating.totalRatingScore >= sg.requiredRating && sg.status === 'recruiting' && !application
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -71,8 +72,15 @@ export default function StudyDetail() {
         </div>
 
         {/* 지원 버튼 */}
-        {canApply ? (
-          <button className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">
+        {application ? (
+          <button disabled className="w-full bg-primary/10 text-primary py-3 rounded-xl font-semibold text-sm cursor-not-allowed">
+            신청 완료 · 검토 중
+          </button>
+        ) : canApply ? (
+          <button
+            onClick={() => applyStudy(sg.groupId)}
+            className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
             스터디 참여 신청
           </button>
         ) : sg.status !== 'recruiting' ? (

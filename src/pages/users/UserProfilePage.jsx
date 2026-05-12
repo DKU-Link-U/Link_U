@@ -1,7 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
-import { mockRankingList } from '../../models'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
-import { useAppState } from '../../store'
+import { useAppState, useRanking } from '../../store'
 
 const PROFILE_PRESETS = {
   u10: {
@@ -48,7 +47,7 @@ function getTierColor(tier) {
   return 'text-primary bg-primary/10'
 }
 
-function createProfile({ userId, currentUser, rating }) {
+function createProfile({ userId, currentUser, rating, rankingUsers }) {
   if (currentUser?.userId === userId) {
     return {
       userId,
@@ -65,7 +64,7 @@ function createProfile({ userId, currentUser, rating }) {
     }
   }
 
-  const rankingEntry = mockRankingList.find(user => user.userId === userId)
+  const rankingEntry = rankingUsers.find(user => user.userId === userId)
   if (!rankingEntry) return null
 
   return {
@@ -81,7 +80,8 @@ function createProfile({ userId, currentUser, rating }) {
 export default function UserProfilePage() {
   const { userId } = useParams()
   const { currentUser, rating } = useAppState()
-  const profile = createProfile({ userId, currentUser, rating })
+  const { rankingUsers } = useRanking()
+  const profile = createProfile({ userId, currentUser, rating, rankingUsers })
 
   if (!profile) {
     return (

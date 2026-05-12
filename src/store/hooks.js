@@ -80,3 +80,68 @@ export function useAccountLinks() {
     disconnectAccountLink,
   }
 }
+
+export function useStudies() {
+  const {
+    studies,
+    filteredStudies,
+    studyFilters,
+    studyApplications,
+    setStudyFilters,
+    addStudy,
+    applyStudy,
+  } = useAppState()
+
+  return {
+    studies,
+    filteredStudies,
+    studyFilters,
+    studyApplications,
+    setStudyFilters,
+    addStudy,
+    applyStudy,
+    getStudyById: groupId => studies.find(study => study.groupId === groupId),
+  }
+}
+
+export function useProjects() {
+  const {
+    projects,
+    filteredProjects,
+    projectFilters,
+    projectApplications,
+    setProjectFilters,
+    addProject,
+    applyProject,
+  } = useAppState()
+
+  return {
+    projects,
+    filteredProjects,
+    projectFilters,
+    projectApplications,
+    setProjectFilters,
+    addProject,
+    applyProject,
+    getProjectById: projectId => projects.find(project => project.projectId === projectId),
+  }
+}
+
+export function useRanking() {
+  const {
+    rankingUsers,
+    rankingTab,
+    visibleRankingUsers,
+    myRankingEntry,
+    setRankingTab,
+  } = useAppState()
+
+  return {
+    rankingUsers,
+    rankingTab,
+    visibleRankingUsers,
+    myRankingEntry,
+    setRankingTab,
+    getRankingUserById: userId => rankingUsers.find(user => user.userId === userId),
+  }
+}

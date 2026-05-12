@@ -1,13 +1,15 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { mockProjects } from '../../models'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
+import { useProjects } from '../../store'
+
+const FILTERS = [
+  { value: 'all', label: '전체' },
+  { value: 'recruiting', label: '모집중' },
+  { value: 'closed', label: '마감' },
+]
 
 export default function ProjectBoard() {
-  const [keyword, setKeyword] = useState('')
-  const filtered = mockProjects.filter(p =>
-    p.title.includes(keyword) || p.techStack.some(t => t.includes(keyword))
-  )
+  const { filteredProjects, projectFilters, setProjectFilters } = useProjects()
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -25,20 +27,39 @@ export default function ProjectBoard() {
       </div>
 
       {/* 검색 */}
-      <div className="bg-white rounded-2xl shadow-md p-4 flex items-center gap-2">
-        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-        </svg>
-        <input
-          value={keyword} onChange={e => setKeyword(e.target.value)}
-          placeholder="프로젝트명, 기술스택 검색"
-          className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none"
-        />
+      <div className="bg-white rounded-2xl shadow-md p-4 flex items-center gap-3">
+        <div className="flex-1 flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+          </svg>
+          <input
+            value={projectFilters.keyword}
+            onChange={e => setProjectFilters({ keyword: e.target.value })}
+            placeholder="프로젝트명, 기술스택 검색"
+            className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+          />
+        </div>
+        <div className="flex gap-1">
+          {FILTERS.map(f => (
+            <button
+              key={f.value}
+              onClick={() => setProjectFilters({ status: f.value })}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                projectFilters.status === f.value ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 프로젝트 목록 */}
       <div className="flex flex-col gap-3">
-        {filtered.map(p => (
+        {filteredProjects.length === 0 && (
+          <div className="text-center py-16 text-gray-400 text-sm">검색 결과가 없습니다.</div>
+        )}
+        {filteredProjects.map(p => (
           <Link
             key={p.projectId}
             to={routeTo.projectDetail(p.projectId)}
