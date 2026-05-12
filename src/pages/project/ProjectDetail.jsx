@@ -1,9 +1,11 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockProjects, mockRating } from '../../models'
+import { mockProjects } from '../../models'
+import { useAppState } from '../../store'
 
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { rating } = useAppState()
   const p = mockProjects.find(x => x.projectId === id)
 
   if (!p) {
@@ -15,7 +17,7 @@ export default function ProjectDetail() {
     )
   }
 
-  const canApply = mockRating.totalRatingScore >= p.requiredRating && p.status === 'recruiting'
+  const canApply = rating.totalRatingScore >= p.requiredRating && p.status === 'recruiting'
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -59,7 +61,7 @@ export default function ProjectDetail() {
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">내 점수</p>
-            <p className="font-semibold text-primary">{mockRating.totalRatingScore}점</p>
+            <p className="font-semibold text-primary">{rating.totalRatingScore}점</p>
           </div>
         </div>
 
@@ -74,7 +76,7 @@ export default function ProjectDetail() {
         ) : (
           <div className="text-center py-3 bg-red-50 rounded-xl">
             <p className="text-xs text-red-500 font-medium">점수가 부족합니다.</p>
-            <p className="text-xs text-red-400 mt-0.5">필요: {p.requiredRating}점 / 현재: {mockRating.totalRatingScore}점</p>
+            <p className="text-xs text-red-400 mt-0.5">필요: {p.requiredRating}점 / 현재: {rating.totalRatingScore}점</p>
           </div>
         )}
       </div>
