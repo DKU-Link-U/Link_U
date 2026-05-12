@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useCurrentUser, useMessages } from '../../store'
 
 const TABS = ['받은 쪽지', '보낸 쪽지']
@@ -36,10 +37,12 @@ function MessageRow({ msg, isSent, onClick, selected }) {
 }
 
 export default function MessagesPage() {
+  const [searchParams] = useSearchParams()
+  const initialReceiver = searchParams.get('to') ?? ''
   const [tab, setTab] = useState('받은 쪽지')
   const [selected, setSelected] = useState(null)
-  const [compose, setCompose] = useState(false)
-  const [newMsg, setNewMsg] = useState({ to: '', content: '' })
+  const [compose, setCompose] = useState(Boolean(initialReceiver))
+  const [newMsg, setNewMsg] = useState({ to: initialReceiver, content: '' })
   const currentUser = useCurrentUser()
   const {
     receivedMessages,

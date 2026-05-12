@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { mockRankingList, mockUser } from '../../models'
+import { mockRankingList } from '../../models'
+import { ROUTE_PATHS, routeTo } from '../../routes/paths'
+import { useAppState } from '../../store'
 
 const TABS = [
   { key: 'overall', label: '개인 전체 랭킹' },
@@ -33,8 +35,9 @@ function TierIcon({ tier }) {
 
 export default function RankingPage() {
   const [tab, setTab] = useState('overall')
+  const { currentUser } = useAppState()
 
-  const myEntry = mockRankingList.find(r => r.userId === mockUser.userId)
+  const myEntry = mockRankingList.find(r => r.userId === currentUser?.userId)
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -84,18 +87,18 @@ export default function RankingPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">학과</th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500">점수</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">티어</th>
-                <th className="w-20 px-4 py-3" />
+                <th className="w-32 px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {(tab === 'department'
-                ? mockRankingList.filter(r => r.department === mockUser.department)
+                ? mockRankingList.filter(r => r.department === currentUser?.department)
                 : mockRankingList
               ).map((r, i) => (
                 <tr
                   key={r.userId}
                   className={`border-b border-gray-50 last:border-none transition-colors hover:bg-gray-50 ${
-                    r.userId === mockUser.userId ? 'bg-primary/5' : ''
+                    r.userId === currentUser?.userId ? 'bg-primary/5' : ''
                   }`}
                 >
                   <td className="px-5 py-3.5">
@@ -104,10 +107,13 @@ export default function RankingPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5">
-                    <span className={`font-medium ${r.userId === mockUser.userId ? 'text-primary' : 'text-gray-800'}`}>
+                    <Link
+                      to={r.userId === currentUser?.userId ? ROUTE_PATHS.mypage.profile : routeTo.userProfile(r.userId)}
+                      className={`font-medium hover:underline ${r.userId === currentUser?.userId ? 'text-primary' : 'text-gray-800'}`}
+                    >
                       {r.nickname}
-                      {r.userId === mockUser.userId && <span className="ml-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">나</span>}
-                    </span>
+                      {r.userId === currentUser?.userId && <span className="ml-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">나</span>}
+                    </Link>
                   </td>
                   <td className="px-4 py-3.5 text-gray-500 text-xs">{r.department}</td>
                   <td className="px-5 py-3.5 text-right font-semibold text-gray-800">{r.score.toLocaleString()}</td>
@@ -118,10 +124,16 @@ export default function RankingPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    {r.userId !== mockUser.userId && (
+                    {r.userId !== currentUser?.userId && (
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          to={`/messages?to=${r.userId}`}
+                          to={routeTo.userProfile(r.userId)}
+                          className="text-[10px] text-gray-500 border border-gray-200 px-2 py-1 rounded-lg hover:bg-gray-50"
+                        >
+                          프로필
+                        </Link>
+                        <Link
+                          to={routeTo.messagesTo(r.userId)}
                           className="text-[10px] text-primary border border-primary/30 px-2 py-1 rounded-lg hover:bg-primary/5"
                         >
                           쪽지

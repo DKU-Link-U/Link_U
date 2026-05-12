@@ -1,5 +1,6 @@
 import { mockProjects } from '../../models'
 import { Link } from 'react-router-dom'
+import { ROUTE_PATHS, routeTo } from '../../routes/paths'
 
 const myProjects = mockProjects.slice(0, 1)
 
@@ -10,7 +11,7 @@ export default function MyProjects() {
       {myProjects.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
           <p>참여 중인 프로젝트가 없습니다.</p>
-          <Link to="/project" className="text-primary text-xs underline mt-2 inline-block">프로젝트 찾아보기</Link>
+          <Link to={ROUTE_PATHS.project.list} className="text-primary text-xs underline mt-2 inline-block">프로젝트 찾아보기</Link>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -31,7 +32,7 @@ export default function MyProjects() {
               <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-50">
                 <span>리더: {p.leaderName}</span>
                 <span>{p.currentCount}/{p.capacity}명</span>
-                <Link to={`/project/${p.projectId}`} className="text-primary font-medium hover:underline">상세 보기</Link>
+                <Link to={routeTo.projectDetail(p.projectId)} className="text-primary font-medium hover:underline">상세 보기</Link>
               </div>
             </div>
           ))}

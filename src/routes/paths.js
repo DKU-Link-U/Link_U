@@ -11,6 +11,9 @@ export const ROUTE_PATHS = {
     create: '/project/create',
     detail: '/project/:id',
   },
+  users: {
+    profile: '/users/:userId',
+  },
   notifications: '/notifications',
   messages: '/messages',
   mypage: {
@@ -25,3 +28,17 @@ export const ROUTE_PATHS = {
 }
 
 export const DEFAULT_ROUTE = ROUTE_PATHS.home
+
+function fillPath(path, params) {
+  return Object.entries(params).reduce(
+    (result, [key, value]) => result.replace(`:${key}`, encodeURIComponent(String(value))),
+    path,
+  )
+}
+
+export const routeTo = {
+  studyDetail: id => fillPath(ROUTE_PATHS.study.detail, { id }),
+  projectDetail: id => fillPath(ROUTE_PATHS.project.detail, { id }),
+  userProfile: userId => fillPath(ROUTE_PATHS.users.profile, { userId }),
+  messagesTo: userId => `${ROUTE_PATHS.messages}?to=${encodeURIComponent(String(userId))}`,
+}

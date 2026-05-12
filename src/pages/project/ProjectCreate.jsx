@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ROUTE_PATHS } from '../../routes/paths'
 
 export default function ProjectCreate() {
   const navigate = useNavigate()
@@ -9,7 +10,7 @@ export default function ProjectCreate() {
   const handleSubmit = e => {
     e.preventDefault()
     alert('프로젝트 모집글이 등록되었습니다.')
-    navigate('/project')
+    navigate(ROUTE_PATHS.project.list)
   }
 
   return (
