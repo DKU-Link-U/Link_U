@@ -1,21 +1,25 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockStudyGroups, mockUser, mockRating } from '../../models'
+import { ROUTE_PATHS } from '../../routes/paths'
+import { useAppState, useStudies } from '../../store'
 
 export default function StudyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const sg = mockStudyGroups.find(g => g.groupId === id)
+  const { rating } = useAppState()
+  const { getStudyById, studyApplications, applyStudy } = useStudies()
+  const sg = getStudyById(id)
+  const application = studyApplications[id]
 
   if (!sg) {
     return (
       <div className="text-center py-24 text-gray-400">
         <p className="text-sm">스터디를 찾을 수 없습니다.</p>
-        <Link to="/study" className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
+        <Link to={ROUTE_PATHS.study.list} className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
       </div>
     )
   }
 
-  const canApply = mockRating.totalRatingScore >= sg.requiredRating && sg.status === 'recruiting'
+  const canApply = rating.totalRatingScore >= sg.requiredRating && sg.status === 'recruiting' && !application
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -63,13 +67,20 @@ export default function StudyDetail() {
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">내 점수</p>
-            <p className="font-semibold text-primary">{mockRating.totalRatingScore}점</p>
+            <p className="font-semibold text-primary">{rating.totalRatingScore}점</p>
           </div>
         </div>
 
         {/* 지원 버튼 */}
-        {canApply ? (
-          <button className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">
+        {application ? (
+          <button disabled className="w-full bg-primary/10 text-primary py-3 rounded-xl font-semibold text-sm cursor-not-allowed">
+            신청 완료 · 검토 중
+          </button>
+        ) : canApply ? (
+          <button
+            onClick={() => applyStudy(sg.groupId)}
+            className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
             스터디 참여 신청
           </button>
         ) : sg.status !== 'recruiting' ? (
@@ -80,7 +91,7 @@ export default function StudyDetail() {
           <div className="text-center py-3 bg-red-50 rounded-xl">
             <p className="text-xs text-red-500 font-medium">점수가 부족하여 지원할 수 없습니다.</p>
             <p className="text-xs text-red-400 mt-0.5">
-              필요: {sg.requiredRating}점 / 현재: {mockRating.totalRatingScore}점 (부족: {sg.requiredRating - mockRating.totalRatingScore}점)
+              필요: {sg.requiredRating}점 / 현재: {rating.totalRatingScore}점 (부족: {sg.requiredRating - rating.totalRatingScore}점)
             </p>
           </div>
         )}
