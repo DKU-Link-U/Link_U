@@ -70,7 +70,23 @@ function toApplicationItem(application) {
     status: application.status.toLowerCase(),
     message: application.message,
     appliedAt: application.createdAt.toISOString(),
+    applicant: application.applicant ? {
+      id: application.applicant.id,
+      email: application.applicant.email,
+      name: application.applicant.name,
+      nickname: application.applicant.nickname,
+      department: application.applicant.department,
+      githubId: application.applicant.githubId,
+      bojId: application.applicant.bojId,
+      dreamhackId: application.applicant.dreamhackId,
+    } : undefined,
   };
+}
+
+function assertRecruitmentAuthor(recruitment, userId) {
+  if (recruitment.authorId !== userId) {
+    throw createHttpError(403, '모집글 작성자만 지원자를 관리할 수 있습니다.');
+  }
 }
 
 async function createCommunityRecruitment(type, authorId, body) {
@@ -140,9 +156,62 @@ async function applyCommunityRecruitment(type, recruitmentId, applicantId, body 
   return toApplicationItem(application);
 }
 
+async function getCommunityApplications(type, recruitmentId, requesterId) {
+  const recruitment = await recruitmentService.getRecruitmentById(recruitmentId);
+
+  if (recruitment.type !== type) {
+    throw createHttpError(404, '모집글을 찾을 수 없습니다.');
+  }
+
+  assertRecruitmentAuthor(recruitment, requesterId);
+
+  const applications = await prisma.application.findMany({
+    where: { recruitmentId },
+    include: {
+      applicant: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return applications.map(toApplicationItem);
+}
+
+async function updateApplicationStatus(applicationId, requesterId, status) {
+  const normalizedStatus = String(status || '').toUpperCase();
+
+  if (!['ACCEPTED', 'REJECTED', 'PENDING', 'CANCELED'].includes(normalizedStatus)) {
+    throw createHttpError(400, '지원 상태는 accepted, rejected, pending, canceled 중 하나여야 합니다.');
+  }
+
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: {
+      recruitment: true,
+    },
+  });
+
+  if (!application) {
+    throw createHttpError(404, '지원 내역을 찾을 수 없습니다.');
+  }
+
+  assertRecruitmentAuthor(application.recruitment, requesterId);
+
+  const updatedApplication = await prisma.application.update({
+    where: { id: applicationId },
+    data: { status: normalizedStatus },
+    include: {
+      applicant: true,
+    },
+  });
+
+  return toApplicationItem(updatedApplication);
+}
+
 module.exports = {
   applyCommunityRecruitment,
   createCommunityRecruitment,
+  getCommunityApplications,
   getCommunityRecruitmentById,
   getCommunityRecruitments,
+  updateApplicationStatus,
 };
