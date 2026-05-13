@@ -1,15 +1,22 @@
 import { Link } from 'react-router-dom'
+import EligibilityBadge from '../../components/EligibilityBadge'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
 import { useStudies } from '../../store'
 
 const FILTERS = [
   { value: 'all', label: '전체' },
+  { value: 'eligible', label: '지원 가능' },
   { value: 'recruiting', label: '모집중' },
   { value: 'closed', label: '마감' },
 ]
 
 export default function StudyBoard() {
-  const { filteredStudies, studyFilters, setStudyFilters } = useStudies()
+  const {
+    filteredStudies,
+    studyFilters,
+    setStudyFilters,
+    getStudyEligibility,
+  } = useStudies()
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -28,8 +35,8 @@ export default function StudyBoard() {
       </div>
 
       {/* 검색 + 필터 */}
-      <div className="bg-white rounded-2xl shadow-md p-4 flex items-center gap-3">
-        <div className="flex-1 flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+      <div className="bg-white rounded-2xl shadow-md p-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="w-full flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 sm:flex-1">
           <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
           </svg>
@@ -40,7 +47,7 @@ export default function StudyBoard() {
             className="bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none flex-1"
           />
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {FILTERS.map(f => (
             <button
               key={f.value}
@@ -71,48 +78,55 @@ export default function StudyBoard() {
         {filteredStudies.length === 0 && (
           <div className="text-center py-16 text-gray-400 text-sm">검색 결과가 없습니다.</div>
         )}
-        {filteredStudies.map(sg => (
-          <Link
-            key={sg.groupId}
-            to={routeTo.studyDetail(sg.groupId)}
-            className="bg-white rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1.5">
-                  {sg.status === 'recruiting'
-                    ? <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">모집중</span>
-                    : <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">마감</span>
-                  }
-                  <span className="text-[10px] text-gray-400">{sg.createdAt}</span>
+        {filteredStudies.map(sg => {
+          const eligibility = getStudyEligibility(sg)
+
+          return (
+            <Link
+              key={sg.groupId}
+              to={routeTo.studyDetail(sg.groupId)}
+              className="bg-white rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {sg.status === 'recruiting'
+                      ? <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">모집중</span>
+                      : <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">마감</span>
+                    }
+                    <EligibilityBadge eligibility={eligibility} />
+                    <span className="text-[10px] text-gray-400">{sg.createdAt}</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-800 mb-1">{sg.title}</h3>
+                  <p className="text-xs text-gray-500 line-clamp-2">{sg.description}</p>
                 </div>
-                <h3 className="text-sm font-bold text-gray-800 mb-1">{sg.title}</h3>
-                <p className="text-xs text-gray-500 line-clamp-2">{sg.description}</p>
+                <svg className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
               </div>
-              <svg className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </div>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-              <div className="flex gap-1 flex-wrap">
-                {sg.techStack.map(t => (
-                  <span key={t} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{t}</span>
-                ))}
+              <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-gray-50 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex gap-1 flex-wrap">
+                  {sg.techStack.map(t => (
+                    <span key={t} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{t}</span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  <span>리더: {sg.leaderName}</span>
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                    </svg>
+                    {sg.currentCount}/{sg.capacity}명
+                  </span>
+                  <span className={eligibility.canApply ? 'text-primary font-medium' : 'text-red-500 font-medium'}>
+                    {eligibility.canApply ? `최소 ${sg.requiredRating}점` : eligibility.reason}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-gray-500 flex-shrink-0">
-                <span>리더: {sg.leaderName}</span>
-                <span className="flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-                  </svg>
-                  {sg.currentCount}/{sg.capacity}명
-                </span>
-                <span className="text-primary font-medium">최소 {sg.requiredRating}점</span>
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          )
+        })}
       </div>
     </div>
   )

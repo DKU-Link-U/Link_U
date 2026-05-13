@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import EligibilityBadge from '../../components/EligibilityBadge'
 import { ROUTE_PATHS } from '../../routes/paths'
 import { useAppState, useStudies } from '../../store'
 
@@ -6,9 +7,8 @@ export default function StudyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { rating } = useAppState()
-  const { getStudyById, studyApplications, applyStudy } = useStudies()
+  const { getStudyById, applyStudy, getStudyEligibility } = useStudies()
   const sg = getStudyById(id)
-  const application = studyApplications[id]
 
   if (!sg) {
     return (
@@ -19,7 +19,7 @@ export default function StudyDetail() {
     )
   }
 
-  const canApply = rating.totalRatingScore >= sg.requiredRating && sg.status === 'recruiting' && !application
+  const eligibility = getStudyEligibility(sg)
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -38,6 +38,7 @@ export default function StudyDetail() {
             ? <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">모집중</span>
             : <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">마감</span>
           }
+          <EligibilityBadge eligibility={eligibility} />
           <span className="text-[10px] text-gray-400">{sg.createdAt}</span>
         </div>
 
@@ -63,7 +64,7 @@ export default function StudyDetail() {
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">최소 요구 점수</p>
-            <p className={`font-semibold ${canApply ? 'text-green-600' : 'text-red-500'}`}>{sg.requiredRating}점</p>
+            <p className={`font-semibold ${eligibility.canApply ? 'text-green-600' : 'text-red-500'}`}>{sg.requiredRating}점</p>
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">내 점수</p>
@@ -72,26 +73,26 @@ export default function StudyDetail() {
         </div>
 
         {/* 지원 버튼 */}
-        {application ? (
-          <button disabled className="w-full bg-primary/10 text-primary py-3 rounded-xl font-semibold text-sm cursor-not-allowed">
-            신청 완료 · 검토 중
-          </button>
-        ) : canApply ? (
+        {eligibility.canApply ? (
           <button
             onClick={() => applyStudy(sg.groupId)}
             className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
           >
             스터디 참여 신청
           </button>
-        ) : sg.status !== 'recruiting' ? (
-          <button disabled className="w-full bg-gray-200 text-gray-500 py-3 rounded-xl font-semibold text-sm cursor-not-allowed">
-            모집 마감
-          </button>
         ) : (
-          <div className="text-center py-3 bg-red-50 rounded-xl">
-            <p className="text-xs text-red-500 font-medium">점수가 부족하여 지원할 수 없습니다.</p>
-            <p className="text-xs text-red-400 mt-0.5">
-              필요: {sg.requiredRating}점 / 현재: {rating.totalRatingScore}점 (부족: {sg.requiredRating - rating.totalRatingScore}점)
+          <div className={`text-center py-3 rounded-xl ${
+            eligibility.status === 'applied' ? 'bg-primary/10' : 'bg-red-50'
+          }`}>
+            <p className={`text-xs font-medium ${
+              eligibility.status === 'applied' ? 'text-primary' : 'text-red-500'
+            }`}>
+              {eligibility.label}
+            </p>
+            <p className={`text-xs mt-0.5 ${
+              eligibility.status === 'applied' ? 'text-primary/70' : 'text-red-400'
+            }`}>
+              {eligibility.reason}
             </p>
           </div>
         )}

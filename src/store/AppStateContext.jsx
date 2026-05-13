@@ -18,6 +18,7 @@ import {
   mockUser,
 } from '../models'
 import { AppStateContext } from './context'
+import { getApplicationEligibility } from './communityEligibility'
 import { mapIntegratedUserData } from './userDataMapper'
 
 const ACTIONS = {
@@ -508,9 +509,20 @@ export function AppStateProvider({ children }) {
     const sentMessages = currentUser
       ? state.messages.filter(message => message.senderId === currentUser.userId)
       : []
-    const matchCommunityFilters = (item, filters) => {
+    const getStudyEligibility = study =>
+      getApplicationEligibility(study, {
+        score: state.rating.totalRatingScore,
+        application: state.studies.applications[study?.groupId],
+      })
+    const getProjectEligibility = project =>
+      getApplicationEligibility(project, {
+        score: state.rating.totalRatingScore,
+        application: state.projects.applications[project?.projectId],
+      })
+    const matchCommunityFilters = (item, filters, eligibility) => {
       const keyword = filters.keyword.trim().toLowerCase()
-      const statusMatch = filters.status === 'all' || item.status === filters.status
+      const statusMatch = filters.status === 'all' ||
+        (filters.status === 'eligible' ? eligibility.canApply : item.status === filters.status)
       const keywordMatch = !keyword ||
         item.title.toLowerCase().includes(keyword) ||
         item.description.toLowerCase().includes(keyword) ||
@@ -519,10 +531,10 @@ export function AppStateProvider({ children }) {
       return statusMatch && keywordMatch
     }
     const filteredStudies = state.studies.items.filter(study =>
-      matchCommunityFilters(study, state.studies.filters),
+      matchCommunityFilters(study, state.studies.filters, getStudyEligibility(study)),
     )
     const filteredProjects = state.projects.items.filter(project =>
-      matchCommunityFilters(project, state.projects.filters),
+      matchCommunityFilters(project, state.projects.filters, getProjectEligibility(project)),
     )
     const visibleRankingUsers = state.ranking.tab === 'department'
       ? state.ranking.users.filter(user => user.department === currentUser?.department)
@@ -585,6 +597,13 @@ export function AppStateProvider({ children }) {
       return createdStudy
     }
     const applyStudy = async groupId => {
+      const study = state.studies.items.find(item => item.groupId === groupId)
+      const eligibility = getStudyEligibility(study)
+
+      if (!eligibility.canApply) {
+        throw new Error(eligibility.reason)
+      }
+
       const application = await applyStudyRequest(groupId, { currentUser })
 
       dispatch({
@@ -601,6 +620,13 @@ export function AppStateProvider({ children }) {
       return createdProject
     }
     const applyProject = async projectId => {
+      const project = state.projects.items.find(item => item.projectId === projectId)
+      const eligibility = getProjectEligibility(project)
+
+      if (!eligibility.canApply) {
+        throw new Error(eligibility.reason)
+      }
+
       const application = await applyProjectRequest(projectId, { currentUser })
 
       dispatch({
@@ -630,10 +656,12 @@ export function AppStateProvider({ children }) {
       studyFilters: state.studies.filters,
       studyApplications: state.studies.applications,
       filteredStudies,
+      getStudyEligibility,
       projects: state.projects.items,
       projectFilters: state.projects.filters,
       projectApplications: state.projects.applications,
       filteredProjects,
+      getProjectEligibility,
       rankingUsers: state.ranking.users,
       rankingTab: state.ranking.tab,
       visibleRankingUsers,
