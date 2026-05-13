@@ -8,5 +8,6 @@ const projectController = createCommunityController('PROJECT');
 router.get('/', projectController.getList);
 router.get('/:id', projectController.getDetail);
 router.post('/', authMiddleware, projectController.create);
+router.post('/:id/applications', authMiddleware, projectController.apply);
 
 module.exports = router;
