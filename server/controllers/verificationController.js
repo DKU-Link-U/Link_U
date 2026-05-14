@@ -3,9 +3,9 @@ const solvedac = require('../crawlers/solvedac');
 const dreamhack = require('../crawlers/dreamhack');
 
 const PLATFORM_LOADERS = {
-  github: accountId => github.getUserProfile(accountId),
-  boj: accountId => solvedac.getUserInfo(accountId),
-  dreamhack: accountId => dreamhack.getUserStats(accountId),
+  github: (accountId) => github.getUserProfile(accountId),
+  boj: (accountId) => solvedac.getUserInfo(accountId),
+  dreamhack: (accountId) => dreamhack.getUserStats(accountId),
 };
 
 const PLATFORM_LABELS = {
@@ -20,11 +20,11 @@ function containsToken(value, token) {
   }
 
   if (Array.isArray(value)) {
-    return value.some(item => containsToken(item, token));
+    return value.some((item) => containsToken(item, token));
   }
 
   if (value && typeof value === 'object') {
-    return Object.values(value).some(item => containsToken(item, token));
+    return Object.values(value).some((item) => containsToken(item, token));
   }
 
   return false;
@@ -35,28 +35,26 @@ async function verifyExternalAccount(req, res) {
   const loader = PLATFORM_LOADERS[platform];
 
   if (!loader) {
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       verified: false,
       message: '지원하지 않는 플랫폼입니다.',
     });
-    return;
   }
 
   if (!accountId?.trim() || !token?.trim()) {
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       verified: false,
       message: '계정 아이디와 검증 코드가 모두 필요합니다.',
     });
-    return;
   }
 
   try {
     const profile = await loader(accountId.trim());
     const verified = containsToken(profile, token.trim());
 
-    res.json({
+    return res.json({
       success: true,
       verified,
       platform,
@@ -68,7 +66,8 @@ async function verifyExternalAccount(req, res) {
     });
   } catch (error) {
     console.error(`[Verify:${platform}] 계정 소유 확인 실패:`, error.message);
-    res.status(502).json({
+
+    return res.status(502).json({
       success: false,
       verified: false,
       platform,

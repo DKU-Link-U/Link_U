@@ -1,4 +1,7 @@
 const USE_BACKEND_API = import.meta.env.VITE_USE_BACKEND_API === 'true'
+const ENV_ACCESS_TOKEN = import.meta.env.VITE_API_ACCESS_TOKEN?.trim() ?? ''
+
+export const ACCESS_TOKEN_STORAGE_KEY = 'link-u-access-token'
 
 export class ApiError extends Error {
   constructor(message, details = {}) {
@@ -24,11 +27,46 @@ export function cloneData(data) {
   return JSON.parse(JSON.stringify(data))
 }
 
+export function getStoredAccessToken() {
+  if (typeof window === 'undefined') return ''
+
+  try {
+    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)?.trim() ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function setStoredAccessToken(accessToken) {
+  if (typeof window === 'undefined') return
+
+  try {
+    if (accessToken) {
+      window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken)
+      return
+    }
+
+    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
+  } catch {
+    // localStorage가 막힌 환경에서는 메모리 상태의 토큰만 사용한다.
+  }
+}
+
+export function clearStoredAccessToken() {
+  setStoredAccessToken('')
+}
+
+export function resolveAccessToken(accessToken) {
+  return accessToken?.trim?.() || getStoredAccessToken() || ENV_ACCESS_TOKEN
+}
+
 export async function requestJson(endpoint, options = {}) {
   const {
     method = 'GET',
     body,
+    accessToken,
     fallback,
+    headers = {},
     errorMessage = 'API request failed.',
   } = options
 
@@ -39,9 +77,16 @@ export async function requestJson(endpoint, options = {}) {
   let response
 
   try {
+    const authToken = resolveAccessToken(accessToken)
+    const requestHeaders = {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...headers,
+    }
+
     response = await fetch(endpoint, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch (error) {

@@ -43,19 +43,21 @@ export async function fetchStudyDetail(groupId) {
   })
 }
 
-export async function createStudy(form, { currentUser } = {}) {
+export async function createStudy(form, { currentUser, accessToken } = {}) {
   return requestJson('/api/studies', {
     method: 'POST',
     body: form,
+    accessToken,
     fallback: () => createStudyFallback(form, currentUser),
     errorMessage: 'Failed to create study.',
   })
 }
 
-export async function applyStudy(groupId, { currentUser } = {}) {
+export async function applyStudy(groupId, { currentUser, accessToken } = {}) {
   return requestJson(`/api/studies/${encodeURIComponent(groupId)}/applications`, {
     method: 'POST',
     body: { userId: currentUser?.userId },
+    accessToken,
     fallback: () => createApplicationFallback(currentUser),
     errorMessage: 'Failed to apply to study.',
   })
