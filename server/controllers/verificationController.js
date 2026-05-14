@@ -11,7 +11,12 @@ const PLATFORM_LOADERS = {
 const PLATFORM_LABELS = {
   github: 'GitHub',
   boj: 'Solved.ac',
+  baekjoon: 'Solved.ac',
   dreamhack: 'Dreamhack',
+};
+
+const PLATFORM_ALIASES = {
+  baekjoon: 'boj',
 };
 
 function containsToken(value, token) {
@@ -32,7 +37,8 @@ function containsToken(value, token) {
 
 async function verifyExternalAccount(req, res) {
   const { platform, accountId, token } = req.query;
-  const loader = PLATFORM_LOADERS[platform];
+  const platformKey = PLATFORM_ALIASES[platform] || platform;
+  const loader = PLATFORM_LOADERS[platformKey];
 
   if (!loader) {
     return res.status(400).json({
@@ -58,21 +64,21 @@ async function verifyExternalAccount(req, res) {
     return res.json({
       success: true,
       verified,
-      platform,
-      platformName: PLATFORM_LABELS[platform],
+      platform: platformKey,
+      platformName: PLATFORM_LABELS[platform] || PLATFORM_LABELS[platformKey],
       accountId,
       message: verified
         ? '계정 소유 확인이 완료되었습니다.'
         : '공개 프로필에서 검증 코드를 찾지 못했습니다.',
     });
   } catch (error) {
-    console.error(`[Verify:${platform}] 계정 소유 확인 실패:`, error.message);
+    console.error(`[Verify:${platformKey}] 계정 소유 확인 실패:`, error.message);
 
     return res.status(error.statusCode || 502).json({
       success: false,
       verified: false,
-      platform,
-      platformName: PLATFORM_LABELS[platform],
+      platform: platformKey,
+      platformName: PLATFORM_LABELS[platform] || PLATFORM_LABELS[platformKey],
       accountId,
       message: error.publicMessage || '계정 소유 확인 중 외부 API 조회에 실패했습니다.',
       error: error.message,
