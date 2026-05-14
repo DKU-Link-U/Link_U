@@ -1,4 +1,5 @@
 export * from './accountVerificationApi'
+export * from './httpClient'
 export * from './messageApi'
 export * from './projectApi'
 export * from './rankingApi'

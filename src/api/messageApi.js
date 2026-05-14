@@ -23,18 +23,20 @@ export async function fetchMessages(params = {}) {
   })
 }
 
-export async function sendMessage(message, { currentUser } = {}) {
+export async function sendMessage(message, { currentUser, accessToken } = {}) {
   return requestJson('/api/messages', {
     method: 'POST',
     body: message,
+    accessToken,
     fallback: () => createMessageFallback(message, currentUser),
     errorMessage: 'Failed to send message.',
   })
 }
 
-export async function markMessageRead(messageId) {
+export async function markMessageRead(messageId, { accessToken } = {}) {
   return requestJson(`/api/messages/${encodeURIComponent(messageId)}/read`, {
     method: 'PATCH',
+    accessToken,
     fallback: () => ({ messageId, isRead: true }),
     errorMessage: 'Failed to mark message as read.',
   })

@@ -43,19 +43,21 @@ export async function fetchProjectDetail(projectId) {
   })
 }
 
-export async function createProject(form, { currentUser } = {}) {
+export async function createProject(form, { currentUser, accessToken } = {}) {
   return requestJson('/api/projects', {
     method: 'POST',
     body: form,
+    accessToken,
     fallback: () => createProjectFallback(form, currentUser),
     errorMessage: 'Failed to create project.',
   })
 }
 
-export async function applyProject(projectId, { currentUser } = {}) {
+export async function applyProject(projectId, { currentUser, accessToken } = {}) {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/applications`, {
     method: 'POST',
     body: { userId: currentUser?.userId },
+    accessToken,
     fallback: () => createApplicationFallback(currentUser),
     errorMessage: 'Failed to apply to project.',
   })

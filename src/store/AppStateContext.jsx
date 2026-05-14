@@ -7,6 +7,7 @@ import {
   markMessageRead as markMessageReadRequest,
   sendMessage as sendMessageRequest,
 } from '../api'
+import { clearStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
 import { fetchIntegratedUserData } from '../api/userApi'
 import {
   mockMessages,
@@ -33,6 +34,7 @@ const ACTIONS = {
   LOAD_EXTERNAL_PROFILE_SUCCESS: 'externalProfile/loadSuccess',
   LOAD_EXTERNAL_PROFILE_ERROR: 'externalProfile/loadError',
   CLEAR_EXTERNAL_PROFILE_ERROR: 'externalProfile/clearError',
+  SET_AUTH_TOKEN: 'auth/setToken',
   SET_ACCOUNT_LINK: 'accountLinks/set',
   VERIFY_ACCOUNT_LINK: 'accountLinks/verify',
   DISCONNECT_ACCOUNT_LINK: 'accountLinks/disconnect',
@@ -46,6 +48,7 @@ const ACTIONS = {
 }
 
 const STORAGE_KEY = 'link-u-app-state'
+const INITIAL_ACCESS_TOKEN = import.meta.env.VITE_API_ACCESS_TOKEN ?? ''
 
 const ACCOUNT_LINK_IDS = {
   github: 'githubId',
@@ -88,8 +91,18 @@ const baseInitialState = {
   auth: {
     isAuthenticated: true,
     user: mockUser,
+    accessToken: INITIAL_ACCESS_TOKEN,
   },
   rating: mockRating,
+  activity: {
+    fieldStats: {},
+    commitActivity: [],
+    syncedPlatforms: {
+      github: false,
+      baekjoon: false,
+      dreamhack: false,
+    },
+  },
   notifications: mockNotifications,
   messages: mockMessages,
   studies: {
@@ -173,6 +186,10 @@ function createInitialState() {
       ...baseInitialState.rating,
       ...persistedState.rating,
     },
+    activity: {
+      ...baseInitialState.activity,
+      ...persistedState.activity,
+    },
     studies: {
       ...baseInitialState.studies,
       ...persistedState.studies,
@@ -225,6 +242,7 @@ function persistState(state) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
       auth: state.auth,
       rating: state.rating,
+      activity: state.activity,
       studies: state.studies,
       projects: state.projects,
       ranking: {
@@ -250,8 +268,9 @@ function appStateReducer(state, action) {
       return {
         ...state,
         auth: {
-          isAuthenticated: Boolean(action.payload),
-          user: action.payload,
+          isAuthenticated: Boolean(action.payload?.user ?? action.payload),
+          user: action.payload?.user ?? action.payload,
+          accessToken: action.payload?.accessToken ?? state.auth.accessToken,
         },
       }
 
@@ -261,6 +280,16 @@ function appStateReducer(state, action) {
         auth: {
           isAuthenticated: false,
           user: null,
+          accessToken: '',
+        },
+      }
+
+    case ACTIONS.SET_AUTH_TOKEN:
+      return {
+        ...state,
+        auth: {
+          ...state.auth,
+          accessToken: action.payload ?? '',
         },
       }
 
@@ -333,6 +362,10 @@ function appStateReducer(state, action) {
           user: action.payload.user,
         },
         rating: action.payload.rating,
+        activity: {
+          ...state.activity,
+          ...action.payload.activity,
+        },
         externalProfile: {
           ids: action.payload.ids,
           data: action.payload.data,
@@ -501,8 +534,18 @@ export function AppStateProvider({ children }) {
     persistState(state)
   }, [state])
 
+  useEffect(() => {
+    if (state.auth.accessToken) {
+      setStoredAccessToken(state.auth.accessToken)
+      return
+    }
+
+    clearStoredAccessToken()
+  }, [state.auth.accessToken])
+
   const value = useMemo(() => {
     const currentUser = state.auth.user
+    const accessToken = state.auth.accessToken
     const receivedMessages = currentUser
       ? state.messages.filter(message => message.receiverId === currentUser.userId)
       : []
@@ -581,17 +624,17 @@ export function AppStateProvider({ children }) {
       }
     }
     const addMessage = async message => {
-      const createdMessage = await sendMessageRequest(message, { currentUser })
+      const createdMessage = await sendMessageRequest(message, { currentUser, accessToken })
 
       dispatch({ type: ACTIONS.ADD_MESSAGE, payload: createdMessage })
       return createdMessage
     }
     const markMessageRead = async messageId => {
-      await markMessageReadRequest(messageId)
+      await markMessageReadRequest(messageId, { accessToken })
       dispatch({ type: ACTIONS.MARK_MESSAGE_READ, payload: messageId })
     }
     const addStudy = async form => {
-      const createdStudy = await createStudyRequest(form, { currentUser })
+      const createdStudy = await createStudyRequest(form, { currentUser, accessToken })
 
       dispatch({ type: ACTIONS.ADD_STUDY, payload: createdStudy })
       return createdStudy
@@ -604,7 +647,7 @@ export function AppStateProvider({ children }) {
         throw new Error(eligibility.reason)
       }
 
-      const application = await applyStudyRequest(groupId, { currentUser })
+      const application = await applyStudyRequest(groupId, { currentUser, accessToken })
 
       dispatch({
         type: ACTIONS.APPLY_STUDY,
@@ -614,7 +657,7 @@ export function AppStateProvider({ children }) {
       return application
     }
     const addProject = async form => {
-      const createdProject = await createProjectRequest(form, { currentUser })
+      const createdProject = await createProjectRequest(form, { currentUser, accessToken })
 
       dispatch({ type: ACTIONS.ADD_PROJECT, payload: createdProject })
       return createdProject
@@ -627,7 +670,7 @@ export function AppStateProvider({ children }) {
         throw new Error(eligibility.reason)
       }
 
-      const application = await applyProjectRequest(projectId, { currentUser })
+      const application = await applyProjectRequest(projectId, { currentUser, accessToken })
 
       dispatch({
         type: ACTIONS.APPLY_PROJECT,
@@ -641,7 +684,12 @@ export function AppStateProvider({ children }) {
       state,
       dispatch,
       currentUser,
+      accessToken,
       rating: state.rating,
+      fieldStats: state.activity.fieldStats,
+      commitActivity: state.activity.commitActivity,
+      syncedPlatforms: state.activity.syncedPlatforms,
+      rankingHistory: state.rating.history ?? [],
       externalProfile: state.externalProfile,
       accountLinks: state.accountLinks,
       isAuthenticated: state.auth.isAuthenticated,
@@ -666,7 +714,13 @@ export function AppStateProvider({ children }) {
       rankingTab: state.ranking.tab,
       visibleRankingUsers,
       myRankingEntry,
-      setCurrentUser: user => dispatch({ type: ACTIONS.SET_CURRENT_USER, payload: user }),
+      setCurrentUser: (user, accessTokenValue) =>
+        dispatch({
+          type: ACTIONS.SET_CURRENT_USER,
+          payload: accessTokenValue === undefined ? user : { user, accessToken: accessTokenValue },
+        }),
+      setAccessToken: accessTokenValue =>
+        dispatch({ type: ACTIONS.SET_AUTH_TOKEN, payload: accessTokenValue }),
       logout: () => dispatch({ type: ACTIONS.LOGOUT }),
       setTheme: theme => dispatch({ type: ACTIONS.SET_THEME, payload: theme }),
       markNotificationRead: notificationId =>

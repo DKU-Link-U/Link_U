@@ -1,3 +1,19 @@
+export const GITHUB_OAUTH_MESSAGE_TYPES = {
+  success: 'LINK_U_GITHUB_OAUTH_SUCCESS',
+  error: 'LINK_U_GITHUB_OAUTH_ERROR',
+}
+
+export function buildGithubOAuthUrl() {
+  const params = new URLSearchParams()
+
+  if (typeof window !== 'undefined') {
+    params.set('origin', window.location.origin)
+  }
+
+  const query = params.toString()
+  return `/api/auth/github${query ? `?${query}` : ''}`
+}
+
 export async function verifyExternalAccount({ platform, accountId, token }) {
   const params = new URLSearchParams({
     platform,
