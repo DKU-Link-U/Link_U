@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import EligibilityBadge from '../../components/EligibilityBadge'
 import { ROUTE_PATHS } from '../../routes/paths'
@@ -8,6 +9,8 @@ export default function ProjectDetail() {
   const navigate = useNavigate()
   const { rating } = useAppState()
   const { getProjectById, applyProject, getProjectEligibility } = useProjects()
+  const [applicationError, setApplicationError] = useState('')
+  const [isApplying, setIsApplying] = useState(false)
   const p = getProjectById(id)
 
   if (!p) {
@@ -20,6 +23,18 @@ export default function ProjectDetail() {
   }
 
   const eligibility = getProjectEligibility(p)
+  const handleApply = async () => {
+    setApplicationError('')
+    setIsApplying(true)
+
+    try {
+      await applyProject(p.projectId)
+    } catch (error) {
+      setApplicationError(error.message || '프로젝트 참여 신청에 실패했습니다.')
+    } finally {
+      setIsApplying(false)
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -69,12 +84,20 @@ export default function ProjectDetail() {
         </div>
 
         {eligibility.canApply ? (
-          <button
-            onClick={() => applyProject(p.projectId)}
-            className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
-          >
-            프로젝트 참여 신청
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleApply}
+              disabled={isApplying}
+              className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              {isApplying ? '신청 중...' : '프로젝트 참여 신청'}
+            </button>
+            {applicationError && (
+              <p className="text-xs text-red-500 text-center bg-red-50 rounded-xl py-2 px-3">
+                {applicationError}
+              </p>
+            )}
+          </div>
         ) : (
           <div className={`text-center py-3 rounded-xl ${
             eligibility.status === 'applied' ? 'bg-primary/10' : 'bg-red-50'
