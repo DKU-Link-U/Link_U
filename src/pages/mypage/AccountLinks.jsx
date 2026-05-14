@@ -105,11 +105,20 @@ export default function AccountLinks() {
   const connect = key => {
     const username = inputMap[key]
     if (!username?.trim()) return
+    const normalizedUsername = username.trim()
+
+    if (key === 'dreamhack' && normalizedUsername.includes('@')) {
+      setVerificationErrors(errors => ({
+        ...errors,
+        [key]: 'Dreamhack은 이메일이 아니라 공개 닉네임을 입력해야 합니다.',
+      }))
+      return
+    }
 
     clearExternalProfileError()
     setAccountLink({
       platform: key,
-      username: username.trim(),
+      username: normalizedUsername,
       verificationCode: createVerificationCode(key),
     })
     setVerificationErrors(errors => ({ ...errors, [key]: null }))
@@ -270,17 +279,22 @@ export default function AccountLinks() {
                 )}
               </div>
             ) : (
-              <div className="flex gap-2">
-                <input
-                  value={inputMap[p.key] ?? ''}
-                  onChange={e => setInputMap(m => ({ ...m, [p.key]: e.target.value }))}
-                  placeholder={`${p.name} 아이디 입력`}
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-primary/50"
-                />
-                <button onClick={() => connect(p.key)}
-                  className="bg-primary text-white text-xs font-semibold px-4 py-2 rounded-xl hover:opacity-90 transition-opacity">
-                  연동
-                </button>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <input
+                    value={inputMap[p.key] ?? ''}
+                    onChange={e => setInputMap(m => ({ ...m, [p.key]: e.target.value }))}
+                    placeholder={`${p.name} ${p.key === 'dreamhack' ? '닉네임' : '아이디'} 입력`}
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-primary/50"
+                  />
+                  <button onClick={() => connect(p.key)}
+                    className="bg-primary text-white text-xs font-semibold px-4 py-2 rounded-xl hover:opacity-90 transition-opacity">
+                    연동
+                  </button>
+                </div>
+                {p.verificationError && (
+                  <p className="text-[11px] text-red-500">{p.verificationError}</p>
+                )}
               </div>
             )}
           </div>
