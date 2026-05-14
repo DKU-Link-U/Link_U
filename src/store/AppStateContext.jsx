@@ -10,6 +10,8 @@ import {
 import { clearStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
 import { fetchIntegratedUserData } from '../api/userApi'
 import {
+  mockCommitData,
+  mockFieldStats,
   mockMessages,
   mockNotifications,
   mockProjects,
@@ -94,6 +96,10 @@ const baseInitialState = {
     accessToken: INITIAL_ACCESS_TOKEN,
   },
   rating: mockRating,
+  activity: {
+    fieldStats: mockFieldStats,
+    commitActivity: mockCommitData,
+  },
   notifications: mockNotifications,
   messages: mockMessages,
   studies: {
@@ -177,6 +183,10 @@ function createInitialState() {
       ...baseInitialState.rating,
       ...persistedState.rating,
     },
+    activity: {
+      ...baseInitialState.activity,
+      ...persistedState.activity,
+    },
     studies: {
       ...baseInitialState.studies,
       ...persistedState.studies,
@@ -229,6 +239,7 @@ function persistState(state) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
       auth: state.auth,
       rating: state.rating,
+      activity: state.activity,
       studies: state.studies,
       projects: state.projects,
       ranking: {
@@ -668,6 +679,9 @@ export function AppStateProvider({ children }) {
       currentUser,
       accessToken,
       rating: state.rating,
+      fieldStats: state.activity.fieldStats,
+      commitActivity: state.activity.commitActivity,
+      rankingHistory: state.rating.history ?? [],
       externalProfile: state.externalProfile,
       accountLinks: state.accountLinks,
       isAuthenticated: state.auth.isAuthenticated,
