@@ -10,8 +10,6 @@ import {
 import { clearStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
 import { fetchIntegratedUserData } from '../api/userApi'
 import {
-  mockCommitData,
-  mockFieldStats,
   mockMessages,
   mockNotifications,
   mockProjects,
@@ -97,8 +95,13 @@ const baseInitialState = {
   },
   rating: mockRating,
   activity: {
-    fieldStats: mockFieldStats,
-    commitActivity: mockCommitData,
+    fieldStats: {},
+    commitActivity: [],
+    syncedPlatforms: {
+      github: false,
+      baekjoon: false,
+      dreamhack: false,
+    },
   },
   notifications: mockNotifications,
   messages: mockMessages,
@@ -359,6 +362,10 @@ function appStateReducer(state, action) {
           user: action.payload.user,
         },
         rating: action.payload.rating,
+        activity: {
+          ...state.activity,
+          ...action.payload.activity,
+        },
         externalProfile: {
           ids: action.payload.ids,
           data: action.payload.data,
@@ -681,6 +688,7 @@ export function AppStateProvider({ children }) {
       rating: state.rating,
       fieldStats: state.activity.fieldStats,
       commitActivity: state.activity.commitActivity,
+      syncedPlatforms: state.activity.syncedPlatforms,
       rankingHistory: state.rating.history ?? [],
       externalProfile: state.externalProfile,
       accountLinks: state.accountLinks,

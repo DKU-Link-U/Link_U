@@ -13,7 +13,7 @@ const COMPLETED_PROJECTS = [
 ]
 
 export default function ActivityStats() {
-  const { rating } = useAppState()
+  const { rating, syncedPlatforms } = useAppState()
 
   return (
     <div className="flex flex-col gap-4">
@@ -22,13 +22,27 @@ export default function ActivityStats() {
       {/* 점수 요약 */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'GitHub Commits', value: rating.githubCommitCount, unit: '개' },
-          { label: '백준 티어', value: rating.baekjoonTier, unit: '' },
-          { label: 'Dreamhack', value: rating.dreamhackScore ?? 0, unit: '점' },
+          {
+            label: 'GitHub Commits',
+            value: syncedPlatforms.github ? rating.githubCommitCount : '연동 필요',
+            unit: syncedPlatforms.github ? '개' : '',
+          },
+          {
+            label: '백준 티어',
+            value: syncedPlatforms.baekjoon ? rating.baekjoonTier : '연동 필요',
+            unit: '',
+          },
+          {
+            label: 'Dreamhack',
+            value: syncedPlatforms.dreamhack ? (rating.dreamhackScore ?? 0) : '연동 필요',
+            unit: syncedPlatforms.dreamhack ? '점' : '',
+          },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl shadow-md p-4 text-center">
             <p className="text-[10px] text-gray-400 mb-1">{s.label}</p>
-            <p className="text-xl font-bold text-primary">{s.value}<span className="text-xs font-normal text-gray-500 ml-0.5">{s.unit}</span></p>
+            <p className={`text-xl font-bold ${s.value === '연동 필요' ? 'text-gray-400 text-sm' : 'text-primary'}`}>
+              {s.value}<span className="text-xs font-normal text-gray-500 ml-0.5">{s.unit}</span>
+            </p>
           </div>
         ))}
       </div>

@@ -3,7 +3,7 @@ import { useActivityStats } from '../store'
 const PLATFORMS = [
   { key: 'github', label: 'GitHub', color: 'bg-emerald-500' },
   { key: 'baekjoon', label: 'Baekjoon', color: 'bg-blue-500' },
-  { key: 'programmers', label: 'Programmers', color: 'bg-violet-500' },
+  { key: 'dreamhack', label: 'Dreamhack', color: 'bg-violet-500' },
 ]
 
 function getTotal(day) {
@@ -32,14 +32,15 @@ function chunkWeeks(activity) {
 }
 
 export default function CommitGrass() {
-  const { commitActivity } = useActivityStats()
+  const { commitActivity, syncedPlatforms } = useActivityStats()
+  const syncedPlatformList = PLATFORMS.filter(platform => syncedPlatforms?.[platform.key])
   const activity = commitActivity ?? []
   const weeks = chunkWeeks(activity)
   const totalByPlatform = PLATFORMS.map(platform => ({
     ...platform,
+    synced: Boolean(syncedPlatforms?.[platform.key]),
     value: activity.reduce((sum, day) => sum + Number(day[platform.key] ?? 0), 0),
   }))
-  const totalActivity = totalByPlatform.reduce((sum, platform) => sum + platform.value, 0)
   const lastSevenDays = activity.slice(-7)
   const lastSevenTotal = lastSevenDays.reduce((sum, day) => sum + getTotal(day), 0)
   const activeDays = activity.filter(day => getTotal(day) > 0).length
@@ -48,47 +49,55 @@ export default function CommitGrass() {
     <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="text-sm font-semibold text-gray-700">Commit Activity</h3>
-        <span className="text-xs font-bold text-primary">{totalActivity} total</span>
+        <span className="text-xs font-bold text-primary">{syncedPlatformList.length} synced</span>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         {totalByPlatform.map(platform => (
-          <div key={platform.key} className="bg-gray-50 rounded-xl px-3 py-2">
+          <div key={platform.key} className={`rounded-xl px-3 py-2 ${platform.synced ? 'bg-gray-50' : 'bg-gray-50/60'}`}>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className={`w-2 h-2 rounded-full ${platform.color}`} />
+              <span className={`w-2 h-2 rounded-full ${platform.synced ? platform.color : 'bg-gray-300'}`} />
               <span className="text-[10px] text-gray-500 truncate">{platform.label}</span>
             </div>
-            <p className="text-base font-bold text-gray-800">{platform.value}</p>
+            <p className={`text-base font-bold ${platform.synced ? 'text-gray-800' : 'text-gray-400'}`}>
+              {platform.synced ? platform.value : '연동 필요'}
+            </p>
           </div>
         ))}
       </div>
 
       <div className="flex-1 flex flex-col gap-3">
-        <div className="overflow-hidden">
-          <div
-            className="grid gap-1"
-            style={{
-              gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
-              gridTemplateRows: 'repeat(7, minmax(0, 1fr))',
-              gridAutoFlow: 'column',
-            }}
-          >
-            {weeks.map((week, weekIndex) =>
-              week.map(day => {
-                const total = getTotal(day)
-
-                return (
-                  <div
-                    key={`${weekIndex}-${day.date}`}
-                    className={`aspect-square rounded-[3px] ${getIntensity(total)}`}
-                    title={`${day.date}: ${total} activities`}
-                    aria-label={`${day.date} 활동 ${total}개`}
-                  />
-                )
-              }),
-            )}
+        {syncedPlatformList.length === 0 ? (
+          <div className="flex-1 min-h-[150px] flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center px-4">
+            <p className="text-xs text-gray-400">계정을 연동하고 활동 데이터를 동기화하면 잔디가 표시됩니다.</p>
           </div>
-        </div>
+        ) : (
+          <div className="overflow-hidden">
+            <div
+              className="grid gap-1"
+              style={{
+                gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
+                gridTemplateRows: 'repeat(7, minmax(0, 1fr))',
+                gridAutoFlow: 'column',
+              }}
+            >
+              {weeks.map((week, weekIndex) =>
+                week.map(day => {
+                  const total = getTotal(day)
+
+                  return (
+                    <div
+                      key={`${weekIndex}-${day.date}`}
+                      className={`aspect-square rounded-[3px] ${getIntensity(total)}`}
+                      title={`${day.date}: ${total} activities`}
+                      aria-label={`${day.date} 활동 ${total}개`}
+                    />
+                  )
+                }),
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="bg-green-50 rounded-xl p-3">

@@ -155,6 +155,7 @@ export function useActivityStats() {
     rating,
     fieldStats,
     commitActivity,
+    syncedPlatforms,
     rankingHistory,
   } = useAppState()
 
@@ -162,6 +163,7 @@ export function useActivityStats() {
     rating,
     fieldStats,
     commitActivity,
+    syncedPlatforms,
     rankingHistory,
   }
 }

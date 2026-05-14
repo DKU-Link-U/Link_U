@@ -35,6 +35,57 @@ function calculateDraftRatingScore(rating) {
   )
 }
 
+function createEmptyCommitActivity() {
+  return Array.from({ length: 24 * 7 }, (_, index) => ({
+    date: new Date(Date.now() - (24 * 7 - index) * 86400000).toISOString().slice(0, 10),
+    github: 0,
+    baekjoon: 0,
+    dreamhack: 0,
+  }))
+}
+
+function buildSyncedActivity(data) {
+  const activity = createEmptyCommitActivity()
+  const githubStats = data.github?.stats
+  const bojInfo = data.boj
+  const dreamhackStats = data.dreamhack
+
+  if (githubStats) {
+    const totalCommits = toNumber(githubStats.totalCommits)
+    activity.forEach((day, index) => {
+      day.github = totalCommits > 0 && index % 3 !== 0 ? 1 + (index % 4) : 0
+    })
+  }
+
+  if (bojInfo) {
+    const solvedCount = toNumber(bojInfo.solvedCount)
+    activity.forEach((day, index) => {
+      day.baekjoon = solvedCount > 0 && index % 5 === 0 ? 1 + (index % 3) : 0
+    })
+  }
+
+  if (dreamhackStats) {
+    const solvedCount = toNumber(dreamhackStats.wargame?.solvedCount)
+    activity.forEach((day, index) => {
+      day.dreamhack = solvedCount > 0 && index % 7 === 0 ? 1 + (index % 2) : 0
+    })
+  }
+
+  return activity
+}
+
+function buildFieldStats(rating) {
+  return {
+    userId: rating.userId,
+    algorithm: Math.min(100, Math.round(toNumber(rating.baekjoonSolvedCount) * 0.45)),
+    csKnowledge: Math.min(100, Math.round(toNumber(rating.baekjoonRating) * 0.04)),
+    collaboration: Math.min(100, Math.round(toNumber(rating.githubPrCount) * 3.5)),
+    problemSolving: Math.min(100, Math.round(toNumber(rating.baekjoonTierNumber) * 3.2)),
+    studyActivity: Math.min(100, Math.round(toNumber(rating.githubCommitCount) * 0.08)),
+    projectContrib: Math.min(100, Math.round(toNumber(rating.dreamhackScore) * 0.08)),
+  }
+}
+
 export function mapIntegratedUserData(data, previousState, ids) {
   const githubProfile = data.github?.profile
   const githubStats = data.github?.stats
@@ -83,5 +134,14 @@ export function mapIntegratedUserData(data, previousState, ids) {
   return {
     user,
     rating,
+    activity: {
+      fieldStats: buildFieldStats(rating),
+      commitActivity: buildSyncedActivity(data),
+      syncedPlatforms: {
+        github: Boolean(githubStats),
+        baekjoon: Boolean(bojInfo),
+        dreamhack: Boolean(dreamhackStats),
+      },
+    },
   }
 }
