@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ROUTE_PATHS } from '../../routes/paths'
+import { useProjects } from '../../store'
 
 export default function ProjectCreate() {
   const navigate = useNavigate()
+  const { addProject } = useProjects()
   const [form, setForm] = useState({ title: '', description: '', techStack: '', capacity: 4, requiredRating: 1000 })
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault()
+    await addProject(form)
     alert('프로젝트 모집글이 등록되었습니다.')
-    navigate('/project')
+    navigate(ROUTE_PATHS.project.list)
   }
 
   return (

@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { mockMessages, mockUser } from '../../models'
+import { useSearchParams } from 'react-router-dom'
+import { useCurrentUser, useMessages } from '../../store'
 
 const TABS = ['받은 쪽지', '보낸 쪽지']
 
 function MessageRow({ msg, isSent, onClick, selected }) {
+  const partnerName = isSent
+    ? msg.receiverName ?? msg.receiverId
+    : msg.senderName
+
   return (
     <button
       onClick={() => onClick(msg)}
@@ -13,12 +18,12 @@ function MessageRow({ msg, isSent, onClick, selected }) {
     >
       {/* 아바타 */}
       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
-        {(isSent ? msg.senderName : msg.senderName)?.[0] ?? '?'}
+        {partnerName?.[0] ?? '?'}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
           <p className="text-xs font-semibold text-gray-800">
-            {isSent ? `To. ${msg.senderName}` : msg.senderName}
+            {isSent ? `To. ${partnerName}` : partnerName}
           </p>
           <p className="text-[10px] text-gray-400 flex-shrink-0">{msg.createdAt.slice(5, 16)}</p>
         </div>
@@ -32,24 +37,35 @@ function MessageRow({ msg, isSent, onClick, selected }) {
 }
 
 export default function MessagesPage() {
+  const [searchParams] = useSearchParams()
+  const initialReceiver = searchParams.get('to') ?? ''
   const [tab, setTab] = useState('받은 쪽지')
   const [selected, setSelected] = useState(null)
-  const [messages, setMessages] = useState(mockMessages)
-  const [compose, setCompose] = useState(false)
-  const [newMsg, setNewMsg] = useState({ to: '', content: '' })
+  const [compose, setCompose] = useState(Boolean(initialReceiver))
+  const [newMsg, setNewMsg] = useState({ to: initialReceiver, content: '' })
+  const currentUser = useCurrentUser()
+  const {
+    receivedMessages,
+    sentMessages,
+    unreadMessageCount,
+    addMessage,
+    markMessageRead,
+  } = useMessages()
 
-  const received = messages.filter(m => m.receiverId === mockUser.userId)
-  const sent = messages.filter(m => m.senderId === mockUser.userId)
-  const list = tab === '받은 쪽지' ? received : sent
+  const list = tab === '받은 쪽지' ? receivedMessages : sentMessages
+  const selectedPartnerName = selected?.receiverId === currentUser?.userId
+    ? selected?.senderName
+    : selected?.receiverName ?? selected?.receiverId
 
   const openMsg = msg => {
     setSelected(msg)
-    setMessages(prev => prev.map(m => m.messageId === msg.messageId ? { ...m, isRead: true } : m))
+    markMessageRead(msg.messageId)
   }
 
   const sendMessage = () => {
     if (!newMsg.to.trim() || !newMsg.content.trim()) return
-    alert(`"${newMsg.to}"에게 쪽지를 보냈습니다.`)
+    addMessage(newMsg)
+    setTab('보낸 쪽지')
     setCompose(false)
     setNewMsg({ to: '', content: '' })
   }
@@ -109,9 +125,9 @@ export default function MessagesPage() {
                 }`}
               >
                 {t}
-                {t === '받은 쪽지' && received.filter(m => !m.isRead).length > 0 && (
+                {t === '받은 쪽지' && unreadMessageCount > 0 && (
                   <span className="ml-1.5 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">
-                    {received.filter(m => !m.isRead).length}
+                    {unreadMessageCount}
                   </span>
                 )}
               </button>
@@ -140,15 +156,15 @@ export default function MessagesPage() {
             <div className="bg-white rounded-2xl shadow-md p-5">
               <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                  {selected.senderName[0]}
+                  {selectedPartnerName?.[0] ?? '?'}
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-800">{selected.senderName}</p>
+                  <p className="text-xs font-semibold text-gray-800">{selectedPartnerName}</p>
                   <p className="text-[10px] text-gray-400">{selected.createdAt}</p>
                 </div>
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">{selected.content}</p>
-              {selected.receiverId === mockUser.userId && (
+              {selected.receiverId === currentUser?.userId && (
                 <button
                   onClick={() => { setCompose(true); setNewMsg(m => ({ ...m, to: selected.senderName })) }}
                   className="mt-4 w-full border border-primary/30 text-primary text-xs font-semibold py-2 rounded-xl hover:bg-primary/5 transition-colors"

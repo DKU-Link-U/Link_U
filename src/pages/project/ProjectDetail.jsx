@@ -1,21 +1,40 @@
+import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockProjects, mockRating } from '../../models'
+import EligibilityBadge from '../../components/EligibilityBadge'
+import { ROUTE_PATHS } from '../../routes/paths'
+import { useAppState, useProjects } from '../../store'
 
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const p = mockProjects.find(x => x.projectId === id)
+  const { rating } = useAppState()
+  const { getProjectById, applyProject, getProjectEligibility } = useProjects()
+  const [applicationError, setApplicationError] = useState('')
+  const [isApplying, setIsApplying] = useState(false)
+  const p = getProjectById(id)
 
   if (!p) {
     return (
       <div className="text-center py-24 text-gray-400">
         <p className="text-sm">프로젝트를 찾을 수 없습니다.</p>
-        <Link to="/project" className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
+        <Link to={ROUTE_PATHS.project.list} className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
       </div>
     )
   }
 
-  const canApply = mockRating.totalRatingScore >= p.requiredRating && p.status === 'recruiting'
+  const eligibility = getProjectEligibility(p)
+  const handleApply = async () => {
+    setApplicationError('')
+    setIsApplying(true)
+
+    try {
+      await applyProject(p.projectId)
+    } catch (error) {
+      setApplicationError(error.message || '프로젝트 참여 신청에 실패했습니다.')
+    } finally {
+      setIsApplying(false)
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -32,6 +51,7 @@ export default function ProjectDetail() {
             ? <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">모집중</span>
             : <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">마감</span>
           }
+          <EligibilityBadge eligibility={eligibility} />
           <span className="text-[10px] text-gray-400">{p.createdAt}</span>
         </div>
 
@@ -55,26 +75,43 @@ export default function ProjectDetail() {
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">최소 요구 점수</p>
-            <p className={`font-semibold ${canApply ? 'text-green-600' : 'text-red-500'}`}>{p.requiredRating}점</p>
+            <p className={`font-semibold ${eligibility.canApply ? 'text-green-600' : 'text-red-500'}`}>{p.requiredRating}점</p>
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">내 점수</p>
-            <p className="font-semibold text-primary">{mockRating.totalRatingScore}점</p>
+            <p className="font-semibold text-primary">{rating.totalRatingScore}점</p>
           </div>
         </div>
 
-        {canApply ? (
-          <button className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">
-            프로젝트 참여 신청
-          </button>
-        ) : p.status !== 'recruiting' ? (
-          <button disabled className="w-full bg-gray-200 text-gray-500 py-3 rounded-xl font-semibold text-sm cursor-not-allowed">
-            모집 마감
-          </button>
+        {eligibility.canApply ? (
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleApply}
+              disabled={isApplying}
+              className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              {isApplying ? '신청 중...' : '프로젝트 참여 신청'}
+            </button>
+            {applicationError && (
+              <p className="text-xs text-red-500 text-center bg-red-50 rounded-xl py-2 px-3">
+                {applicationError}
+              </p>
+            )}
+          </div>
         ) : (
-          <div className="text-center py-3 bg-red-50 rounded-xl">
-            <p className="text-xs text-red-500 font-medium">점수가 부족합니다.</p>
-            <p className="text-xs text-red-400 mt-0.5">필요: {p.requiredRating}점 / 현재: {mockRating.totalRatingScore}점</p>
+          <div className={`text-center py-3 rounded-xl ${
+            eligibility.status === 'applied' ? 'bg-primary/10' : 'bg-red-50'
+          }`}>
+            <p className={`text-xs font-medium ${
+              eligibility.status === 'applied' ? 'text-primary' : 'text-red-500'
+            }`}>
+              {eligibility.label}
+            </p>
+            <p className={`text-xs mt-0.5 ${
+              eligibility.status === 'applied' ? 'text-primary/70' : 'text-red-400'
+            }`}>
+              {eligibility.reason}
+            </p>
           </div>
         )}
       </div>

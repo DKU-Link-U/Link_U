@@ -3,7 +3,8 @@ import UserProfile from '../components/UserProfile'
 import RadarChartWidget from '../components/RadarChartWidget'
 import CommitGrass from '../components/CommitGrass'
 import LineChartWidget from '../components/LineChartWidget'
-import { mockStudyGroups, mockProjects, mockNotifications } from '../models'
+import { ROUTE_PATHS, routeTo } from '../routes/paths'
+import { useNotifications, useProjects, useStudies } from '../store'
 
 const ANNOUNCEMENTS = [
   { id: 1, title: '2026년 1학기 스터디 모집 기간 안내', date: '2026-05-10', isNew: true },
@@ -31,7 +32,9 @@ function StatusBadge({ status }) {
 }
 
 export default function Dashboard() {
-  const unreadCount = mockNotifications.filter(n => !n.isRead).length
+  const { notifications, unreadNotificationCount } = useNotifications()
+  const { studies } = useStudies()
+  const { projects } = useProjects()
 
   return (
     <div className="flex flex-col gap-5 max-w-screen-xl mx-auto">
@@ -40,9 +43,9 @@ export default function Dashboard() {
       <UserProfile />
 
       {/* ── 중단: RadarChart + CommitGrass ── */}
-      <div className="grid grid-cols-5 gap-5" style={{ minHeight: '300px' }}>
-        <div className="col-span-2"><RadarChartWidget /></div>
-        <div className="col-span-3"><CommitGrass /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5" style={{ minHeight: '300px' }}>
+        <div className="lg:col-span-2"><RadarChartWidget /></div>
+        <div className="lg:col-span-3"><CommitGrass /></div>
       </div>
 
       {/* ── 랭킹 추이 ── */}
@@ -51,16 +54,16 @@ export default function Dashboard() {
       </div>
 
       {/* ── 하단 3열 섹션 ── */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* 스터디 목록 미리보기 */}
         <div className="bg-white rounded-2xl shadow-md p-5">
-          <SectionTitle title="스터디 목록" to="/study" />
+          <SectionTitle title="스터디 목록" to={ROUTE_PATHS.study.list} />
           <div className="space-y-2.5">
-            {mockStudyGroups.slice(0, 3).map(sg => (
+            {studies.slice(0, 3).map(sg => (
               <Link
                 key={sg.groupId}
-                to={`/study/${sg.groupId}`}
+                to={routeTo.studyDetail(sg.groupId)}
                 className="block p-3 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -80,12 +83,12 @@ export default function Dashboard() {
 
         {/* 프로젝트 목록 미리보기 */}
         <div className="bg-white rounded-2xl shadow-md p-5">
-          <SectionTitle title="프로젝트 목록" to="/project" />
+          <SectionTitle title="프로젝트 목록" to={ROUTE_PATHS.project.list} />
           <div className="space-y-2.5">
-            {mockProjects.map(p => (
+            {projects.slice(0, 3).map(p => (
               <Link
                 key={p.projectId}
-                to={`/project/${p.projectId}`}
+                to={routeTo.projectDetail(p.projectId)}
                 className="block p-3 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -107,10 +110,10 @@ export default function Dashboard() {
         <div className="flex flex-col gap-4">
           {/* 미확인 알림 요약 */}
           <div className="bg-white rounded-2xl shadow-md p-5">
-            <SectionTitle title="알림" to="/notifications" />
-            {unreadCount > 0 ? (
+            <SectionTitle title="알림" to={ROUTE_PATHS.notifications} />
+            {unreadNotificationCount > 0 ? (
               <div className="space-y-2">
-                {mockNotifications.filter(n => !n.isRead).map(n => (
+                {notifications.filter(n => !n.isRead).map(n => (
                   <div key={n.notificationId} className="flex items-start gap-2">
                     <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                     <p className="text-xs text-gray-700 leading-snug">{n.content}</p>
@@ -142,7 +145,7 @@ export default function Dashboard() {
 
       {/* 마이페이지 바로가기 */}
       <Link
-        to="/mypage"
+        to={ROUTE_PATHS.mypage.root}
         className="flex items-center justify-between bg-primary text-white rounded-2xl px-6 py-4 shadow-md hover:opacity-90 transition-opacity"
       >
         <div>
