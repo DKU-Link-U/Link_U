@@ -2,7 +2,6 @@ import { useState } from 'react'
 
 export default function Settings() {
   const [notify, setNotify] = useState({ study: true, project: true, ranking: true, system: false })
-  const [theme, setTheme] = useState('light')
 
   const toggle = key => setNotify(n => ({ ...n, [key]: !n[key] }))
 
