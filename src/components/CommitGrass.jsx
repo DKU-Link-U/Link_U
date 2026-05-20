@@ -1,262 +1,230 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useActivityStats } from '../store'
 
-/* ═══════════════════════════════════════════════════════════
-   Mock Data  ─  최근 26주(약 6개월)의 랜덤 활동 데이터 생성
-   플랫폼: GitHub / 백준(BOJ) / 프로그래머스
-═══════════════════════════════════════════════════════════ */
-function generateMockData() {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const map = {}
-
-  for (let i = 0; i < 26 * 7; i++) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const key = d.toISOString().split('T')[0]
-    const isWeekday = d.getDay() >= 1 && d.getDay() <= 5
-    const active = Math.random() < (isWeekday ? 0.68 : 0.32)
-
-    map[key] = {
-      date:        key,
-      github:      active && Math.random() < 0.75 ? Math.floor(Math.random() * 8) + 1 : 0,
-      boj:         active && Math.random() < 0.55 ? Math.floor(Math.random() * 6) + 1 : 0,
-      programmers: active && Math.random() < 0.40 ? Math.floor(Math.random() * 4) + 1 : 0,
-    }
-  }
-  return map
-}
-
-const MOCK_DATA = generateMockData()
-
-/* ═══════════════════════════════════════════════════════════
-   상수
-═══════════════════════════════════════════════════════════ */
 const PLATFORMS = [
-  { key: 'github',      label: 'GitHub',      color: '#1E3A5F' },
-  { key: 'boj',         label: '백준',          color: '#FB923C' },
-  { key: 'programmers', label: '프로그래머스',   color: '#14B8A6' },
+  { key: 'github', label: 'GitHub', color: '#1E3A5F', aliases: ['github'] },
+  { key: 'baekjoon', label: '백준', color: '#2563EB', aliases: ['baekjoon', 'boj'] },
+  { key: 'dreamhack', label: 'Dreamhack', color: '#7C3AED', aliases: ['dreamhack'] },
 ]
 
-// 단국대 네이비 기반 5단계 색상 스케일
-const LEVEL_BG    = ['bg-gray-100', 'bg-blue-200', 'bg-blue-400', 'bg-blue-600', 'bg-[#1E3A5F]']
-const LEVEL_HOVER = ['hover:bg-gray-200', 'hover:bg-blue-300', 'hover:bg-blue-500', 'hover:bg-blue-700', 'hover:bg-[#162d4a]']
-
+const LEVEL_BG = ['bg-gray-100', 'bg-blue-100', 'bg-blue-300', 'bg-blue-500', 'bg-[#1E3A5F]']
+const LEVEL_HOVER = ['hover:bg-gray-200', 'hover:bg-blue-200', 'hover:bg-blue-400', 'hover:bg-blue-600', 'hover:bg-[#162d4a]']
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
 
-/* ═══════════════════════════════════════════════════════════
-   유틸리티
-═══════════════════════════════════════════════════════════ */
-const getTotal = day => PLATFORMS.reduce((s, p) => s + (day?.[p.key] ?? 0), 0)
+function toNumber(value) {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+function toDateKey(date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function normalizeDay(rawDay) {
+  const date = rawDay?.date
+
+  if (!date) return null
+
+  return PLATFORMS.reduce((day, platform) => {
+    const value = platform.aliases.reduce((sum, key) => sum + toNumber(rawDay[key]), 0)
+    day[platform.key] = value
+    return day
+  }, { date })
+}
+
+function buildActivityMap(activity = []) {
+  return activity.reduce((map, rawDay) => {
+    const day = normalizeDay(rawDay)
+
+    if (day) {
+      map.set(day.date, day)
+    }
+
+    return map
+  }, new Map())
+}
+
+const getTotal = day => PLATFORMS.reduce((sum, platform) => sum + toNumber(day?.[platform.key]), 0)
 
 function getLevel(total) {
-  if (total === 0) return 0
-  if (total <= 2)  return 1
-  if (total <= 5)  return 2
-  if (total <= 9)  return 3
+  if (total <= 0) return 0
+  if (total <= 2) return 1
+  if (total <= 5) return 2
+  if (total <= 9) return 3
   return 4
 }
 
-/** 26주 × 7일 격자와 월 레이블 목록을 반환 */
-function buildGrid() {
+function buildGrid(activity = []) {
+  const activityMap = buildActivityMap(activity)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // 26주 전 날짜의 일요일로 정렬
   const start = new Date(today)
-  start.setDate(start.getDate() - 26 * 7 + 1)
+  start.setDate(start.getDate() - (26 * 7) + 1)
   start.setDate(start.getDate() - start.getDay())
 
-  const weeks  = []
-  const months = [] // { wIdx, label }
+  const weeks = []
+  const months = []
   let lastMonth = -1
-  const cur = new Date(start)
+  const cursor = new Date(start)
 
-  while (cur <= today) {
+  while (cursor <= today) {
     const week = []
-    for (let d = 0; d < 7; d++) {
-      // 새 달 감지 → 월 레이블 기록 (주의 첫째 날 기준)
-      if (d === 0) {
-        const m = cur.getMonth()
-        if (m !== lastMonth) {
-          months.push({ wIdx: weeks.length, label: `${m + 1}월` })
-          lastMonth = m
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      if (dayIndex === 0) {
+        const month = cursor.getMonth()
+
+        if (month !== lastMonth) {
+          months.push({ weekIndex: weeks.length, label: `${month + 1}월` })
+          lastMonth = month
         }
       }
-      const isFuture = cur > today
-      const ds = cur.toISOString().split('T')[0]
-      week.push(
-        isFuture ? null : (MOCK_DATA[ds] ?? { date: ds, github: 0, boj: 0, programmers: 0 }),
-      )
-      cur.setDate(cur.getDate() + 1)
+
+      const date = toDateKey(cursor)
+      week.push(activityMap.get(date) ?? {
+        date,
+        github: 0,
+        baekjoon: 0,
+        dreamhack: 0,
+      })
+      cursor.setDate(cursor.getDate() + 1)
     }
+
     weeks.push(week)
   }
+
   return { weeks, months }
 }
 
-/** 활동 날짜 수, 연속 달성(streak), 주간 평균 계산 */
-function calcStats() {
-  const vals      = Object.values(MOCK_DATA)
-  const activeDays = vals.filter(d => getTotal(d) > 0).length
-  const totalActs  = vals.reduce((s, d) => s + getTotal(d), 0)
-  const weekAvg    = Math.round((totalActs / 26) * 10) / 10
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+function calcStats(weeks) {
+  const days = weeks.flat().filter(Boolean)
+  const activeDays = days.filter(day => getTotal(day) > 0).length
+  const totalActs = days.reduce((sum, day) => sum + getTotal(day), 0)
+  const weekAvg = Math.round((totalActs / 26) * 10) / 10
   let streak = 0
-  for (let i = 0; i < 365; i++) {
-    const c = new Date(today)
-    c.setDate(c.getDate() - i)
-    const ds  = c.toISOString().split('T')[0]
-    const day = MOCK_DATA[ds]
-    if (day && getTotal(day) > 0) streak++
-    else break
+
+  for (let index = days.length - 1; index >= 0; index -= 1) {
+    if (getTotal(days[index]) <= 0) break
+    streak += 1
   }
-  return { activeDays, weekAvg, streak, totalDays: vals.length }
+
+  return {
+    activeDays,
+    weekAvg,
+    streak,
+    totalDays: days.length,
+    totalActs,
+  }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Tooltip 컴포넌트  (fixed 포지셔닝, 플랫폼별 기여도 표시)
-═══════════════════════════════════════════════════════════ */
 function Tooltip({ day, rect }) {
   const total = getTotal(day)
-  const d = new Date(day.date)
-  const dateLabel = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} (${WEEKDAY_KO[d.getDay()]})`
-
-  // 화면 위쪽 여유가 없으면 아래쪽으로 뒤집기
+  const date = new Date(day.date)
+  const dateLabel = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${WEEKDAY_KO[date.getDay()]})`
   const showBelow = rect.top < 120
   const stylePos = showBelow
     ? { top: rect.bottom + 10, left: rect.left + rect.width / 2, transform: 'translate(-50%, 0)' }
-    : { top: rect.top - 10,    left: rect.left + rect.width / 2, transform: 'translate(-50%, -100%)' }
+    : { top: rect.top - 10, left: rect.left + rect.width / 2, transform: 'translate(-50%, -100%)' }
 
   return (
-    <div
-      style={{ position: 'fixed', ...stylePos, zIndex: 9999, pointerEvents: 'none' }}
-    >
-      <div className="bg-gray-900/95 backdrop-blur-sm text-white rounded-xl px-3.5 py-3 shadow-2xl min-w-[175px]">
-        {/* 날짜 */}
-        <p className="text-[10px] text-gray-400 mb-2 whitespace-nowrap">{dateLabel}</p>
-
-        {/* 총 활동량 */}
-        <div className="flex items-baseline gap-1 mb-2.5">
+    <div style={{ position: 'fixed', ...stylePos, zIndex: 9999, pointerEvents: 'none' }}>
+      <div className="min-w-[175px] rounded-xl bg-gray-900/95 px-3.5 py-3 text-white shadow-2xl backdrop-blur-sm">
+        <p className="mb-2 whitespace-nowrap text-[10px] text-gray-400">{dateLabel}</p>
+        <div className="mb-2.5 flex items-baseline gap-1">
           <span className="text-lg font-bold text-white">{total}</span>
-          <span className="text-[10px] text-gray-400">회 활동</span>
-          {total === 0 && <span className="text-[10px] text-gray-500 ml-1">— 활동 없음</span>}
+          <span className="text-[10px] text-gray-400">개 활동</span>
+          {total === 0 && <span className="ml-1 text-[10px] text-gray-500">활동 없음</span>}
         </div>
-
-        {/* 플랫폼별 분해 */}
         <div className="flex flex-col gap-1.5">
-          {PLATFORMS.map(p => {
-            const val = day[p.key] ?? 0
-            const pct = total > 0 ? Math.round((val / total) * 100) : 0
+          {PLATFORMS.map(platform => {
+            const value = toNumber(day[platform.key])
+            const pct = total > 0 ? Math.round((value / total) * 100) : 0
+
             return (
-              <div key={p.key} className="flex items-center gap-2">
+              <div key={platform.key} className="flex items-center gap-2">
                 <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: p.color }}
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: platform.color }}
                 />
-                <span className="text-[10px] text-gray-300 flex-1 whitespace-nowrap">{p.label}</span>
-                {/* 미니 바 */}
-                <div className="w-14 h-1 bg-gray-700 rounded-full overflow-hidden">
+                <span className="flex-1 whitespace-nowrap text-[10px] text-gray-300">{platform.label}</span>
+                <div className="h-1 w-14 overflow-hidden rounded-full bg-gray-700">
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, background: p.color }}
+                    style={{ width: `${pct}%`, background: platform.color }}
                   />
                 </div>
-                <span className="text-[10px] font-semibold text-white w-5 text-right">{val}</span>
+                <span className="w-5 text-right text-[10px] font-semibold text-white">{value}</span>
               </div>
             )
           })}
         </div>
       </div>
-
-      {/* 캐럿 (위에 표시될 때만) */}
-      {!showBelow && (
-        <div className="flex justify-center">
-          <div
-            style={{
-              width: 0, height: 0,
-              borderLeft:  '5px solid transparent',
-              borderRight: '5px solid transparent',
-              borderTop:   '5px solid rgba(17,24,39,0.95)',
-            }}
-          />
-        </div>
-      )}
-      {showBelow && (
-        <div className="flex justify-center order-first" style={{ marginBottom: -1 }}>
-          <div
-            style={{
-              width: 0, height: 0,
-              borderLeft:   '5px solid transparent',
-              borderRight:  '5px solid transparent',
-              borderBottom: '5px solid rgba(17,24,39,0.95)',
-            }}
-          />
-        </div>
-      )}
     </div>
   )
 }
 
-/* ═══════════════════════════════════════════════════════════
-   CommitGrass  ─  메인 컴포넌트
-═══════════════════════════════════════════════════════════ */
 export default function CommitGrass() {
+  const { commitActivity, syncedPlatforms } = useActivityStats()
   const [tooltip, setTooltip] = useState(null)
-  const { weeks, months } = useMemo(() => buildGrid(), [])
-  const stats = useMemo(() => calcStats(), [])
-  const W = weeks.length
+  const { weeks, months } = useMemo(() => buildGrid(commitActivity), [commitActivity])
+  const stats = useMemo(() => calcStats(weeks), [weeks])
+  const hasActivityData = Array.isArray(commitActivity) && commitActivity.length > 0
+  const hasSyncedPlatform = Object.values(syncedPlatforms ?? {}).some(Boolean)
+  const weekCount = weeks.length
 
-  const handleEnter = (e, day) => {
+  const handleEnter = (event, day) => {
     if (!day) return
-    setTooltip({ day, rect: e.currentTarget.getBoundingClientRect() })
+    setTooltip({ day, rect: event.currentTarget.getBoundingClientRect() })
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-md p-5 flex flex-col gap-4">
-
-      {/* ── 헤더 ── */}
+    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-gray-800">활동 잔디</h3>
-        <div className="flex items-center gap-3 flex-wrap">
-          {PLATFORMS.map(p => (
-            <span key={p.key} className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-              <span className="text-[10px] text-gray-500">{p.label}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          {PLATFORMS.map(platform => (
+            <span key={platform.key} className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ background: platform.color }} />
+              <span className="text-[10px] text-gray-500">{platform.label}</span>
             </span>
           ))}
         </div>
       </div>
 
-      {/* ── 통계 카드 3개 ── */}
+      {!hasActivityData && (
+        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-500">
+          {hasSyncedPlatform
+            ? '동기화된 활동 기록이 아직 없습니다. 계정 동기화를 다시 실행해 주세요.'
+            : 'GitHub, 백준, Dreamhack 계정을 연동하고 동기화하면 활동 기록이 표시됩니다.'}
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: '활동 날짜',  value: `${stats.activeDays}일`,  sub: `/ ${stats.totalDays}일` },
-          { label: '연속 달성',  value: `${stats.streak}일`,      sub: 'streak'                  },
-          { label: '주간 평균',  value: `${stats.weekAvg}회`,     sub: '26주 기준'                },
-        ].map(s => (
-          <div key={s.label} className="bg-gray-50 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-gray-400 mb-0.5">{s.label}</p>
-            <p className="text-base font-bold text-primary leading-tight">{s.value}</p>
-            <p className="text-[9px] text-gray-300 mt-0.5">{s.sub}</p>
+          { label: '활동 일수', value: `${stats.activeDays}일`, sub: `/ ${stats.totalDays}일` },
+          { label: '연속 활동', value: `${stats.streak}일`, sub: 'streak' },
+          { label: '주간 평균', value: `${stats.weekAvg}개`, sub: '26주 기준' },
+        ].map(stat => (
+          <div key={stat.label} className="rounded-xl bg-gray-50 p-3 text-center">
+            <p className="mb-0.5 text-[10px] text-gray-400">{stat.label}</p>
+            <p className="text-base font-bold leading-tight text-primary">{stat.value}</p>
+            <p className="mt-0.5 text-[9px] text-gray-300">{stat.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* ── 잔디 그리드 ── */}
       <div className="overflow-x-auto">
-        <div style={{ minWidth: `${W * 12 + 28}px` }}>
+        <div style={{ minWidth: `${weekCount * 12 + 28}px` }}>
+          <div className="mb-1 ml-[26px] flex gap-[2px]">
+            {weeks.map((_, weekIndex) => {
+              const month = months.find(item => item.weekIndex === weekIndex)
 
-          {/* 월 레이블 행 */}
-          <div className="flex ml-[26px] mb-1 gap-[2px]">
-            {weeks.map((_, wIdx) => {
-              const m = months.find(mo => mo.wIdx === wIdx)
               return (
-                <div key={wIdx} className="w-[10px] shrink-0 relative h-3.5">
-                  {m && (
-                    <span className="absolute left-0 text-[9px] text-gray-400 whitespace-nowrap font-medium">
-                      {m.label}
+                <div key={weekIndex} className="relative h-3.5 w-[10px] shrink-0">
+                  {month && (
+                    <span className="absolute left-0 whitespace-nowrap text-[9px] font-medium text-gray-400">
+                      {month.label}
                     </span>
                   )}
                 </div>
@@ -264,63 +232,57 @@ export default function CommitGrass() {
             })}
           </div>
 
-          {/* 요일 레이블 + 셀 */}
           <div className="flex gap-[4px]">
-
-            {/* 요일 (월·수·금만 표시) */}
-            <div className="flex flex-col gap-[2px] w-[20px] shrink-0">
-              {WEEKDAY_KO.map((label, i) => (
-                <div key={i} className="h-[10px] flex items-center justify-end">
-                  {(i === 1 || i === 3 || i === 5) && (
-                    <span className="text-[8px] text-gray-300 leading-none pr-0.5">{label}</span>
+            <div className="flex w-[20px] shrink-0 flex-col gap-[2px]">
+              {WEEKDAY_KO.map((label, index) => (
+                <div key={label} className="flex h-[10px] items-center justify-end">
+                  {(index === 1 || index === 3 || index === 5) && (
+                    <span className="pr-0.5 text-[8px] leading-none text-gray-300">{label}</span>
                   )}
                 </div>
               ))}
             </div>
 
-            {/* 잔디 셀 그리드 — gridAutoFlow:column 으로 주(週) 순서 렌더링 */}
             <div
               className="grid gap-[2px]"
               style={{
-                gridTemplateColumns: `repeat(${W}, 10px)`,
-                gridTemplateRows:    'repeat(7, 10px)',
-                gridAutoFlow:        'column',
+                gridTemplateColumns: `repeat(${weekCount}, 10px)`,
+                gridTemplateRows: 'repeat(7, 10px)',
+                gridAutoFlow: 'column',
               }}
             >
-              {weeks.map((week, wIdx) =>
-                week.map((day, dIdx) => {
+              {weeks.map((week, weekIndex) =>
+                week.map((day, dayIndex) => {
                   const total = getTotal(day)
-                  const lvl   = getLevel(total)
+                  const level = getLevel(total)
+
                   return (
                     <div
-                      key={`${wIdx}-${dIdx}`}
+                      key={`${weekIndex}-${dayIndex}`}
                       className={[
-                        'w-[10px] h-[10px] rounded-sm cursor-default',
-                        'transition-colors duration-100',
-                        LEVEL_BG[lvl],
-                        day ? LEVEL_HOVER[lvl] : '',
+                        'h-[10px] w-[10px] cursor-default rounded-sm transition-colors duration-100',
+                        LEVEL_BG[level],
+                        LEVEL_HOVER[level],
                       ].join(' ')}
-                      onMouseEnter={e => handleEnter(e, day)}
+                      onMouseEnter={event => handleEnter(event, day)}
                       onMouseLeave={() => setTooltip(null)}
                     />
                   )
-                })
+                }),
               )}
             </div>
           </div>
 
-          {/* 범례 */}
-          <div className="flex items-center gap-1.5 justify-end mt-2.5">
-            <span className="text-[9px] text-gray-400">없음</span>
-            {LEVEL_BG.map((cls, i) => (
-              <div key={i} className={`w-[10px] h-[10px] rounded-sm ${cls}`} />
+          <div className="mt-2.5 flex items-center justify-end gap-1.5">
+            <span className="text-[9px] text-gray-400">적음</span>
+            {LEVEL_BG.map((className, index) => (
+              <div key={className} className={`h-[10px] w-[10px] rounded-sm ${LEVEL_BG[index]}`} />
             ))}
             <span className="text-[9px] text-gray-400">많음</span>
           </div>
         </div>
       </div>
 
-      {/* 툴팁 */}
       {tooltip && <Tooltip day={tooltip.day} rect={tooltip.rect} />}
     </div>
   )
