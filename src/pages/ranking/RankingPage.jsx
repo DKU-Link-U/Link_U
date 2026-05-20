@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchRankingUsers } from '../../api/rankingApi'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
 import { useCurrentUser, useRanking } from '../../store'
 
@@ -16,13 +18,6 @@ const TIER_COLORS = {
   Bronze: 'text-orange-400',
 }
 
-const DEPT_RANKING = [
-  { rank: 1, department: 'Computer Science', avgScore: 1450, memberCount: 120 },
-  { rank: 2, department: 'Software Engineering', avgScore: 1380, memberCount: 95 },
-  { rank: 3, department: 'AI Convergence', avgScore: 1320, memberCount: 80 },
-  { rank: 4, department: 'Electrical Engineering', avgScore: 1200, memberCount: 110 },
-]
-
 function TierIcon({ tier }) {
   return (
     <svg className={`w-4 h-4 ${TIER_COLORS[tier] ?? 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
@@ -36,9 +31,61 @@ export default function RankingPage() {
   const {
     rankingTab: tab,
     setRankingTab,
-    visibleRankingUsers,
-    myRankingEntry: myEntry,
   } = useRanking()
+  const [rankingUsers, setRankingUsers] = useState([])
+  const [departmentRankings, setDepartmentRankings] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const visibleRankingUsers = tab === 'dept-overall' ? [] : rankingUsers
+  const myEntry = useMemo(
+    () => rankingUsers.find(user => user.userId === currentUser?.userId),
+    [currentUser?.userId, rankingUsers],
+  )
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadRankings() {
+      if (tab === 'department' && !currentUser?.department) {
+        setRankingUsers([])
+        return
+      }
+
+      setLoading(true)
+      setError('')
+
+      try {
+        const params = tab === 'department'
+          ? { scope: 'department', department: currentUser.department }
+          : tab === 'dept-overall'
+            ? { scope: 'departments' }
+            : {}
+        const result = await fetchRankingUsers(params)
+
+        if (ignore) return
+
+        if (tab === 'dept-overall') {
+          setDepartmentRankings(result)
+        } else {
+          setRankingUsers(result)
+        }
+      } catch (rankingError) {
+        if (!ignore) {
+          setError(rankingError.message || '랭킹 데이터를 불러오지 못했습니다.')
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadRankings()
+
+    return () => {
+      ignore = true
+    }
+  }, [currentUser?.department, tab])
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -76,6 +123,18 @@ export default function RankingPage() {
           </button>
         ))}
       </div>
+
+      {loading && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700">
+          랭킹 데이터를 불러오고 있습니다.
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-600">
+          {error}
+        </div>
+      )}
 
       {/* 랭킹 리스트 */}
       <div className="bg-white rounded-2xl shadow-md overflow-hidden">
@@ -154,7 +213,7 @@ export default function RankingPage() {
               </tr>
             </thead>
             <tbody>
-              {DEPT_RANKING.map((d, i) => (
+              {departmentRankings.map((d, i) => (
                 <tr key={d.rank} className="border-b border-gray-50 last:border-none hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3.5">
                     <span className={`font-bold ${i < 3 ? 'text-yellow-500' : 'text-gray-400'}`}>{d.rank}</span>
