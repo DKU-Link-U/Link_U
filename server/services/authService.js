@@ -9,21 +9,25 @@ function getPrimaryEmail(profile) {
 
 function assertDankookEmail(email) {
   if (!email || !email.endsWith(DANKOOK_EMAIL_DOMAIN)) {
-    const error = new Error('단국대학교 이메일 계정만 가입할 수 있습니다.');
+    const error = new Error(`단국대학교 Google 계정(${DANKOOK_EMAIL_DOMAIN})으로만 로그인할 수 있습니다.`);
     error.statusCode = 403;
-    error.publicMessage = '단국대학교 이메일 계정만 가입할 수 있습니다.';
+    error.publicMessage = `단국대학교 Google 계정(${DANKOOK_EMAIL_DOMAIN})으로만 로그인할 수 있습니다.`;
     throw error;
   }
 }
 
 function toSafeUser(user) {
+  const nickname = user.nickname || user.name || user.email?.split('@')[0] || 'Link_U User';
+
   return {
     id: user.id,
+    userId: user.id,
     email: user.email,
     name: user.name,
-    nickname: user.nickname,
+    nickname,
     department: user.department,
     studentId: user.studentId,
+    university: '단국대학교',
     githubId: user.githubId,
     bojId: user.bojId,
     dreamhackId: user.dreamhackId,

@@ -1,21 +1,6 @@
 const prisma = require('../config/prisma');
+const { getBearerToken } = require('../utils/requestAuth');
 const { verifyAccessToken } = require('../utils/jwt');
-
-function getBearerToken(req) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return null;
-  }
-
-  const [scheme, token] = authHeader.split(' ');
-
-  if (scheme !== 'Bearer' || !token) {
-    return null;
-  }
-
-  return token;
-}
 
 async function authMiddleware(req, res, next) {
   const token = getBearerToken(req);

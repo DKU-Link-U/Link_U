@@ -1,11 +1,18 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ROUTE_PATHS } from '../routes/paths'
 import { useRouteTitle } from '../routes/useRouteTitle'
-import { useNotifications } from '../store'
+import { useAppState, useNotifications } from '../store'
 
 export default function Header() {
   const title = useRouteTitle()
   const { unreadNotificationCount } = useNotifications()
+  const { logout } = useAppState()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
@@ -18,7 +25,7 @@ export default function Header() {
       </h1>
 
       {/* 우측 아이콘 그룹 */}
-      <div className="flex items-center gap-3 w-24 justify-end">
+      <div className="flex items-center gap-3 w-36 justify-end">
         {/* 알림 아이콘 */}
         <Link
           to={ROUTE_PATHS.notifications}
@@ -45,6 +52,19 @@ export default function Header() {
           </svg>
           <span className="text-xs font-medium hidden sm:inline">My Page</span>
         </Link>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-500 hover:text-red-500"
+          aria-label="로그아웃"
+          title="로그아웃"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+            <path d="M10 17l5-5-5-5" />
+            <path d="M15 12H3" />
+          </svg>
+        </button>
       </div>
     </header>
   )

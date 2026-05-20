@@ -1,31 +1,53 @@
-import { BrowserRouter, useRoutes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, useLocation, useRoutes } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
+import LoginPage from './pages/LoginPage'
 import { appRoutes } from './routes/appRoutes'
-import { AppStateProvider } from './store'
+import { AppStateProvider, useAppState } from './store'
+import { canAccessApp } from './utils/auth'
 import './index.css'
 
-function AppLayout() {
-  const routes = useRoutes(appRoutes)
-
+function AppFrame() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background font-sans">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-6">
-          {routes}
+          <Outlet />
         </main>
       </div>
     </div>
   )
 }
 
+function ProtectedApp() {
+  const { state } = useAppState()
+  const location = useLocation()
+
+  if (!canAccessApp(state.auth)) {
+    return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  return <AppFrame />
+}
+
+function AppRoutes() {
+  return useRoutes([
+    { path: '/login', element: <LoginPage /> },
+    {
+      path: '/',
+      element: <ProtectedApp />,
+      children: appRoutes,
+    },
+  ])
+}
+
 function App() {
   return (
     <AppStateProvider>
       <BrowserRouter>
-        <AppLayout />
+        <AppRoutes />
       </BrowserRouter>
     </AppStateProvider>
   )
