@@ -29,6 +29,17 @@ enum ApplicationStatus {
   CANCELED
 }
 
+enum ExternalPlatform {
+  GITHUB
+  BOJ
+  DREAMHACK
+}
+
+enum ActivitySyncStatus {
+  SUCCESS
+  FAILED
+}
+
 model User {
   id          String   @id @default(uuid())
   email       String   @unique
@@ -41,8 +52,10 @@ model User {
   dreamhackId String?
   role        UserRole @default(STUDENT)
 
-  recruitments Recruitment[] @relation("RecruitmentAuthor")
-  applications Application[]
+  recruitments      Recruitment[]              @relation("RecruitmentAuthor")
+  applications      Application[]
+  activitySnapshots ExternalActivitySnapshot[]
+  activityStats     UserActivityStats?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -88,4 +101,39 @@ model Application {
 
   @@unique([recruitmentId, applicantId])
   @@index([applicantId])
+}
+
+model ExternalActivitySnapshot {
+  id           String             @id @default(uuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform     ExternalPlatform
+  accountId    String
+  status       ActivitySyncStatus @default(SUCCESS)
+  rawData      Json?
+  summary      Json?
+  errorMessage String?
+  syncedAt     DateTime           @default(now())
+  createdAt    DateTime           @default(now())
+
+  @@index([userId, platform, syncedAt])
+  @@index([platform, accountId])
+}
+
+model UserActivityStats {
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubCommitCount    Int       @default(0)
+  githubPrCount        Int       @default(0)
+  bojSolvedCount       Int       @default(0)
+  bojTierNumber        Int?
+  bojRating            Int?
+  dreamhackScore       Int       @default(0)
+  dreamhackSolvedCount Int       @default(0)
+  dreamhackRank        Int?
+  totalRatingScore     Int       @default(0)
+  lastSyncedAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }

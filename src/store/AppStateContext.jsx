@@ -165,6 +165,7 @@ function createInitialState() {
   if (!persistedState) return baseInitialState
   const persistedAuth = persistedState.auth ?? {}
   const persistedUser = persistedAuth.user ?? null
+  const persistedUserProfile = persistedUser ?? {}
   const persistedAccessToken = persistedAuth.accessToken || INITIAL_ACCESS_TOKEN
   const restoredAuth = {
     isAuthenticated: Boolean(persistedAuth.isAuthenticated),
@@ -176,8 +177,9 @@ function createInitialState() {
   const restoredAccountLinks = Object.entries(baseAccountLinks).reduce((links, [platform, baseLink]) => {
     const idConfig = ACCOUNT_LINK_IDS[platform]
     const persistedLink = persistedState.accountLinks?.[platform] ?? {}
+    const hasPersistedUserAccount = Boolean(persistedUserProfile[idConfig.userKey])
     const username = persistedLink.username ||
-      persistedUser[idConfig.userKey] ||
+      persistedUserProfile[idConfig.userKey] ||
       persistedIds[idConfig.profileKey] ||
       persistedIds[idConfig.userKey] ||
       ''
@@ -190,7 +192,7 @@ function createInitialState() {
       ...baseLink,
       ...persistedLink,
       username,
-      verified: Boolean(persistedLink.verified || wasSynced),
+      verified: Boolean(persistedLink.verified || wasSynced || hasPersistedUserAccount),
     }
 
     return links
@@ -649,7 +651,7 @@ export function AppStateProvider({ children }) {
       dispatch({ type: ACTIONS.LOAD_EXTERNAL_PROFILE_START, payload: ids })
 
       try {
-        const result = await fetchIntegratedUserData(ids)
+        const result = await fetchIntegratedUserData(ids, { accessToken })
         const mappedData = mapIntegratedUserData(result.data, state, ids)
 
         dispatch({
