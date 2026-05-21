@@ -89,6 +89,7 @@ model Recruitment {
   status         RecruitmentStatus @default(OPEN)
   requiredSkills String[]          @default([])
   requiredRoles  String[]          @default([])
+  requiredRating Int               @default(0)
   maxMembers     Int?
   startDate      DateTime?
   endDate        DateTime?

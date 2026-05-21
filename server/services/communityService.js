@@ -25,6 +25,7 @@ function toRecruitmentPayload(type, body) {
     type,
     requiredSkills: body.requiredSkills || parseCsv(body.techStack),
     requiredRoles: body.requiredRoles || [],
+    requiredRating: body.requiredRating,
     maxMembers: body.maxMembers ?? body.capacity,
     startDate: body.startDate,
     endDate: body.endDate,
@@ -61,7 +62,7 @@ function toCommunityItem(recruitment) {
     leaderName: recruitment.author?.nickname || recruitment.author?.name || 'Unknown',
     title: recruitment.title,
     description: recruitment.description,
-    requiredRating: 0,
+    requiredRating: Number(recruitment.requiredRating) || 0,
     capacity: recruitment.maxMembers || 0,
     currentCount: 1 + acceptedApplicationCount,
     acceptedCount: acceptedApplicationCount,
@@ -165,6 +166,40 @@ async function closeRecruitmentIfFull(recruitment) {
   }
 }
 
+async function getUserApplicationScore(userId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      score: {
+        select: {
+          totalScore: true,
+        },
+      },
+      activityStats: {
+        select: {
+          totalRatingScore: true,
+        },
+      },
+    },
+  });
+
+  return Number(user?.score?.totalScore ?? user?.activityStats?.totalRatingScore ?? 0);
+}
+
+async function assertApplicantMeetsRequiredRating(recruitment, applicantId) {
+  const requiredRating = Number(recruitment.requiredRating) || 0;
+
+  if (requiredRating <= 0) {
+    return;
+  }
+
+  const applicantScore = await getUserApplicationScore(applicantId);
+
+  if (applicantScore < requiredRating) {
+    throw createHttpError(403, `최소 요구 점수보다 ${requiredRating - applicantScore}점 부족합니다.`);
+  }
+}
+
 async function createCommunityRecruitment(type, authorId, body) {
   const recruitment = await recruitmentService.createRecruitment(authorId, toRecruitmentPayload(type, body));
   return toCommunityItem(recruitment);
@@ -222,6 +257,7 @@ async function applyCommunityRecruitment(type, recruitmentId, applicantId, body 
   }
 
   await assertRecruitmentHasOpenSlot(recruitment);
+  await assertApplicantMeetsRequiredRating(recruitment, applicantId);
 
   const application = await prisma.application.create({
     data: {
