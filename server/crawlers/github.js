@@ -1,5 +1,10 @@
 const axios = require('axios');
 require('dotenv').config();
+const {
+  addDaysToDateKey,
+  dateKeyToKoreanDayUtcDate,
+  toKoreanDateKey,
+} = require('../utils/koreanTime');
 
 class GitHubClient {
   constructor() {
@@ -24,26 +29,23 @@ class GitHubClient {
   }
 
   toDateKey(date) {
-    return date.toISOString().slice(0, 10);
+    return toKoreanDateKey(date);
   }
 
   getRecentRange(weeks = 26) {
-    const until = new Date();
-    until.setUTCHours(23, 59, 59, 999);
-
-    const since = new Date(until);
-    since.setUTCDate(since.getUTCDate() - (weeks * 7) + 1);
-    since.setUTCHours(0, 0, 0, 0);
+    const untilKey = this.toDateKey(new Date());
+    const sinceKey = addDaysToDateKey(untilKey, -(weeks * 7) + 1);
 
     return {
-      since,
-      sinceKey: this.toDateKey(since),
-      untilKey: this.toDateKey(until),
+      since: dateKeyToKoreanDayUtcDate(sinceKey),
+      until: dateKeyToKoreanDayUtcDate(untilKey, true),
+      sinceKey,
+      untilKey,
     };
   }
 
   async getDailyCommitCounts(username, { weeks = 26 } = {}) {
-    const { since, sinceKey, untilKey } = this.getRecentRange(weeks);
+    const { since, until, sinceKey, untilKey } = this.getRecentRange(weeks);
     const dailyCounts = new Map();
     let page = 1;
     let hasNextPage = true;
@@ -67,7 +69,7 @@ class GitHubClient {
 
         const committedDate = new Date(committedAt);
 
-        if (Number.isNaN(committedDate.getTime()) || committedDate < since) return;
+        if (Number.isNaN(committedDate.getTime()) || committedDate < since || committedDate > until) return;
 
         const dateKey = this.toDateKey(committedDate);
         dailyCounts.set(dateKey, (dailyCounts.get(dateKey) || 0) + 1);

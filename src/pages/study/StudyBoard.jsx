@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import EligibilityBadge from '../../components/EligibilityBadge'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
@@ -16,7 +17,37 @@ export default function StudyBoard() {
     studyFilters,
     setStudyFilters,
     getStudyEligibility,
+    recommendStudies,
   } = useStudies()
+  const [recommendationState, setRecommendationState] = useState({
+    loading: false,
+    error: '',
+    items: [],
+  })
+
+  const handleRecommend = async () => {
+    setRecommendationState(current => ({
+      ...current,
+      loading: true,
+      error: '',
+    }))
+
+    try {
+      const recommendations = await recommendStudies()
+
+      setRecommendationState({
+        loading: false,
+        error: '',
+        items: Array.isArray(recommendations) ? recommendations : [],
+      })
+    } catch (error) {
+      setRecommendationState({
+        loading: false,
+        error: error.message || 'AI 스터디 추천을 불러오지 못했습니다.',
+        items: [],
+      })
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -68,10 +99,53 @@ export default function StudyBoard() {
           <p className="text-xs text-white/70 mb-1">AI 기반 스터디 추천</p>
           <p className="text-sm font-bold">나에게 맞는 스터디를 추천받아보세요</p>
         </div>
-        <button className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
-          추천받기
+        <button
+          type="button"
+          onClick={handleRecommend}
+          disabled={recommendationState.loading}
+          className="bg-white/20 hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-60 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors"
+        >
+          {recommendationState.loading ? '추천 중...' : '추천받기'}
         </button>
       </div>
+
+      {(recommendationState.error || recommendationState.items.length > 0) && (
+        <div className="bg-white rounded-2xl shadow-md p-4">
+          {recommendationState.error && (
+            <p className="text-xs font-medium text-red-500">{recommendationState.error}</p>
+          )}
+
+          {recommendationState.items.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {recommendationState.items.map(item => (
+                <Link
+                  key={item.groupId}
+                  to={routeTo.studyDetail(item.groupId)}
+                  className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 transition-colors hover:border-primary/40 hover:bg-blue-50"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-primary">AI 추천</span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-primary">
+                      {item.fitScore ?? 0}%
+                    </span>
+                  </div>
+                  <h2 className="line-clamp-2 text-sm font-bold text-gray-800">{item.title}</h2>
+                  <p className="mt-2 line-clamp-3 text-xs leading-5 text-gray-500">{item.reason}</p>
+                  {item.matchedSkills?.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {item.matchedSkills.slice(0, 3).map(skill => (
+                        <span key={skill} className="rounded-full bg-white px-2 py-0.5 text-[10px] text-blue-600">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 스터디 목록 */}
       <div className="flex flex-col gap-3">

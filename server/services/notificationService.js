@@ -1,8 +1,5 @@
 const prisma = require('../config/prisma');
-
-function formatDateTime(value) {
-  return value.toISOString().slice(0, 16).replace('T', ' ');
-}
+const { toKoreanDateTime } = require('../utils/koreanTime');
 
 function toNotificationDto(notification) {
   return {
@@ -13,7 +10,7 @@ function toNotificationDto(notification) {
     content: notification.content,
     isRead: notification.isRead,
     metadata: notification.metadata || {},
-    createdAt: formatDateTime(notification.createdAt),
+    createdAt: toKoreanDateTime(notification.createdAt),
   };
 }
 

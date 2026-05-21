@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useActivityStats } from '../store'
+import { addDaysToDateKey, parseDateKey, toKoreanDateKey } from '../utils/koreanTime'
 
 const LEVEL_BG = ['bg-gray-100', 'bg-blue-100', 'bg-blue-300', 'bg-blue-500', 'bg-[#1E3A5F]']
 const LEVEL_HOVER = ['hover:bg-gray-200', 'hover:bg-blue-200', 'hover:bg-blue-400', 'hover:bg-blue-600', 'hover:bg-[#162d4a]']
@@ -8,10 +9,6 @@ const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
 function toNumber(value) {
   const numericValue = Number(value)
   return Number.isFinite(numericValue) ? numericValue : 0
-}
-
-function toDateKey(date) {
-  return date.toISOString().slice(0, 10)
 }
 
 function normalizeDay(rawDay) {
@@ -47,22 +44,23 @@ function getLevel(total) {
 
 function buildGrid(activity = []) {
   const activityMap = buildActivityMap(activity)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const todayKey = toKoreanDateKey()
+  const startKey = addDaysToDateKey(todayKey, -(26 * 7) + 1)
+  const start = parseDateKey(startKey)
 
-  const start = new Date(today)
-  start.setDate(start.getDate() - (26 * 7) + 1)
   start.setDate(start.getDate() - start.getDay())
 
+  let cursorKey = toKoreanDateKey(start)
   const weeks = []
   const months = []
   let lastMonth = -1
-  const cursor = new Date(start)
 
-  while (cursor <= today) {
+  while (cursorKey <= todayKey) {
     const week = []
 
     for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      const cursor = parseDateKey(cursorKey)
+
       if (dayIndex === 0) {
         const month = cursor.getMonth()
 
@@ -72,12 +70,11 @@ function buildGrid(activity = []) {
         }
       }
 
-      const date = toDateKey(cursor)
-      week.push(activityMap.get(date) ?? {
-        date,
+      week.push(activityMap.get(cursorKey) ?? {
+        date: cursorKey,
         github: 0,
       })
-      cursor.setDate(cursor.getDate() + 1)
+      cursorKey = addDaysToDateKey(cursorKey, 1)
     }
 
     weeks.push(week)
@@ -87,7 +84,8 @@ function buildGrid(activity = []) {
 }
 
 function calcStats(weeks) {
-  const days = weeks.flat().filter(Boolean)
+  const todayKey = toKoreanDateKey()
+  const days = weeks.flat().filter(day => day?.date && day.date <= todayKey)
   const activeDays = days.filter(day => toNumber(day.github) > 0).length
   const totalCommits = days.reduce((sum, day) => sum + toNumber(day.github), 0)
   const weekAvg = Math.round((totalCommits / 26) * 10) / 10
@@ -109,7 +107,7 @@ function calcStats(weeks) {
 
 function Tooltip({ day, rect }) {
   const count = toNumber(day.github)
-  const date = new Date(day.date)
+  const date = parseDateKey(day.date)
   const dateLabel = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${WEEKDAY_KO[date.getDay()]})`
   const showBelow = rect.top < 120
   const stylePos = showBelow
