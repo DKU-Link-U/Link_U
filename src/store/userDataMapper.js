@@ -33,8 +33,7 @@ function calculateDraftRatingScore(rating) {
     toNumber(rating.baekjoonTierNumber) * 30 +
     toNumber(rating.baekjoonRating) * 0.1 +
     toNumber(rating.dreamhackScore) +
-    toNumber(rating.dreamhackSolvedCount) * 20 +
-    toNumber(rating.dreamhackContributionLevel) * 50,
+    toNumber(rating.dreamhackSolvedCount) * 20,
   )
 }
 
@@ -85,8 +84,7 @@ function buildFieldStats(rating) {
   )
   const security = Math.round(
     toNumber(rating.dreamhackScore) +
-    toNumber(rating.dreamhackSolvedCount) * 20 +
-    toNumber(rating.dreamhackContributionLevel) * 50,
+    toNumber(rating.dreamhackSolvedCount) * 20,
   )
   const implementation = Math.round(
     toNumber(rating.githubCommitCount) * 2 +
