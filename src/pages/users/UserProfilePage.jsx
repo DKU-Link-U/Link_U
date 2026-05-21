@@ -1,6 +1,9 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { fetchRankingUser } from '../../api/rankingApi'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
 import { useAppState, useRanking } from '../../store'
+import { getIntegratedTier, getIntegratedTierStyle } from '../../utils/ratingTier'
 
 const PROFILE_PRESETS = {
   u10: {
@@ -38,17 +41,17 @@ function parseList(value) {
 }
 
 function getTierColor(tier) {
-  if (tier?.includes('Diamond')) return 'text-sky-500 bg-sky-50'
-  if (tier?.includes('Platinum')) return 'text-teal-500 bg-teal-50'
-  if (tier?.includes('Gold')) return 'text-yellow-600 bg-yellow-50'
-  if (tier?.includes('Silver')) return 'text-gray-500 bg-gray-50'
-  if (tier?.includes('Bronze')) return 'text-orange-500 bg-orange-50'
-
-  return 'text-primary bg-primary/10'
+  return getIntegratedTierStyle(tier).badge
 }
 
-function createProfile({ userId, currentUser, rating, rankingUsers }) {
-  if (currentUser?.userId === userId) {
+function getUserId(user) {
+  return user?.userId ?? user?.id
+}
+
+function createProfile({ fetchedUser, userId, currentUser, rating, rankingUsers, syncedPlatforms }) {
+  if (getUserId(currentUser) === userId) {
+    const hasSyncedScore = Object.values(syncedPlatforms).some(Boolean) || Number(rating.totalRatingScore) > 0
+
     return {
       userId,
       nickname: currentUser.nickname,
@@ -59,17 +62,18 @@ function createProfile({ userId, currentUser, rating, rankingUsers }) {
       interestArea: currentUser.interestArea,
       techStack: parseList(currentUser.techStack),
       score: rating.totalRatingScore,
-      tier: rating.baekjoonTier,
+      tier: hasSyncedScore ? getIntegratedTier(rating.totalRatingScore) : '연동 필요',
       profileImage: currentUser.profileImage,
       isSelf: true,
     }
   }
 
-  const rankingEntry = rankingUsers.find(user => user.userId === userId)
+  const rankingEntry = fetchedUser || rankingUsers.find(user => user.userId === userId)
   if (!rankingEntry) return null
 
   return {
     ...rankingEntry,
+    tier: rankingEntry.tier || getIntegratedTier(rankingEntry.score),
     university: 'Dankook University',
     oneLiner: PROFILE_PRESETS[userId]?.oneLiner ?? '함께 성장할 팀을 찾고 있는 Link-U 사용자입니다.',
     interestArea: PROFILE_PRESETS[userId]?.interestArea ?? 'Study, Project',
@@ -86,14 +90,86 @@ function formatAffiliation(profile) {
 
 export default function UserProfilePage() {
   const { userId } = useParams()
-  const { currentUser, rating } = useAppState()
+  const { currentUser, rating, syncedPlatforms } = useAppState()
   const { rankingUsers } = useRanking()
-  const profile = createProfile({ userId, currentUser, rating, rankingUsers })
+  const [fetchedState, setFetchedState] = useState({
+    userId: '',
+    user: null,
+    loading: false,
+    error: '',
+  })
+  const isSelf = getUserId(currentUser) === userId
+  const fetchedUser = fetchedState.userId === userId ? fetchedState.user : null
+  const loading = fetchedState.userId === userId && fetchedState.loading
+  const error = fetchedState.userId === userId ? fetchedState.error : ''
+  const profile = useMemo(
+    () => createProfile({ fetchedUser, userId, currentUser, rating, rankingUsers, syncedPlatforms }),
+    [currentUser, fetchedUser, rankingUsers, rating, syncedPlatforms, userId],
+  )
+
+  useEffect(() => {
+    if (!userId || isSelf) return
+
+    let ignore = false
+
+    async function loadUserProfile() {
+      setFetchedState({
+        userId,
+        user: null,
+        loading: true,
+        error: '',
+      })
+
+      try {
+        const user = await fetchRankingUser(userId)
+
+        if (!ignore) {
+          setFetchedState({
+            userId,
+            user,
+            loading: false,
+            error: '',
+          })
+        }
+      } catch (profileError) {
+        if (!ignore) {
+          setFetchedState({
+            userId,
+            user: null,
+            loading: false,
+            error: profileError.message || '사용자 프로필을 불러오지 못했습니다.',
+          })
+        }
+      } finally {
+        if (!ignore) {
+          setFetchedState(currentState =>
+            currentState.userId === userId
+              ? { ...currentState, loading: false }
+              : currentState,
+          )
+        }
+      }
+    }
+
+    loadUserProfile()
+
+    return () => {
+      ignore = true
+    }
+  }, [isSelf, userId])
+
+  if (loading && !profile) {
+    return (
+      <div className="max-w-xl mx-auto text-center py-24 text-gray-400">
+        <p className="text-sm">사용자 프로필을 불러오는 중입니다.</p>
+      </div>
+    )
+  }
 
   if (!profile) {
     return (
       <div className="max-w-xl mx-auto text-center py-24 text-gray-400">
-        <p className="text-sm">사용자 프로필을 찾을 수 없습니다.</p>
+        <p className="text-sm">{error || '사용자 프로필을 찾을 수 없습니다.'}</p>
         <Link to={ROUTE_PATHS.ranking} className="text-primary text-xs underline mt-2 inline-block">
           랭킹으로 돌아가기
         </Link>
@@ -139,7 +215,7 @@ export default function UserProfilePage() {
           <div className="text-right flex-shrink-0">
             <p className="text-xs text-gray-400 mb-1">통합 점수</p>
             <p className="text-3xl font-bold text-primary">{profile.score?.toLocaleString()}</p>
-            <span className={`inline-flex mt-2 text-xs font-bold px-2.5 py-1 rounded-full ${getTierColor(profile.tier)}`}>
+            <span className={`inline-flex mt-2 text-xs font-bold px-2.5 py-1 rounded-full border ${getTierColor(profile.tier)}`}>
               {profile.tier}
             </span>
           </div>

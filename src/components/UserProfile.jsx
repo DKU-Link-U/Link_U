@@ -1,4 +1,5 @@
 import { useAppState } from '../store'
+import { getIntegratedTier, getIntegratedTierStyle } from '../utils/ratingTier'
 
 function formatAffiliation(user) {
   return [user?.department, user?.year ? `${user.year}학년` : null]
@@ -7,8 +8,11 @@ function formatAffiliation(user) {
 }
 
 export default function UserProfile() {
-  const { currentUser, rating } = useAppState()
+  const { currentUser, rating, syncedPlatforms } = useAppState()
   const affiliation = formatAffiliation(currentUser)
+  const hasSyncedScore = Object.values(syncedPlatforms).some(Boolean) || Number(rating.totalRatingScore) > 0
+  const tier = hasSyncedScore ? getIntegratedTier(rating.totalRatingScore) : '연동 필요'
+  const tierStyle = getIntegratedTierStyle(hasSyncedScore ? tier : 'unsynced')
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-6 flex items-center gap-6">
@@ -36,16 +40,19 @@ export default function UserProfile() {
       <div className="text-center px-5 border-l border-gray-100">
         <p className="text-xs text-gray-400 font-medium mb-1">Integrated Ranking Score</p>
         <p className="text-3xl font-bold text-primary">{rating.totalRatingScore}</p>
+        {!hasSyncedScore && (
+          <p className="mt-1 text-[10px] font-medium text-gray-400">계정 연동 후 점수가 표시됩니다.</p>
+        )}
       </div>
 
       {/* 티어 */}
       <div className="text-center px-5 border-l border-gray-100">
         <p className="text-xs text-gray-400 font-medium mb-1">Tier</p>
-        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-yellow-50 border border-yellow-200">
-          <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+        <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border ${tierStyle.badge}`}>
+          <svg className={`w-4 h-4 ${tierStyle.icon}`} fill="currentColor" viewBox="0 0 20 20">
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.448a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.54 1.118l-3.37-2.448a1 1 0 00-1.175 0l-3.37 2.448c-.784.57-1.838-.197-1.539-1.118l1.287-3.957a1 1 0 00-.364-1.118L2.063 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69L9.049 2.927z" />
           </svg>
-          <span className="text-sm font-bold text-yellow-600">{rating.baekjoonTier}</span>
+          <span className="text-sm font-bold">{tier}</span>
         </span>
       </div>
     </div>

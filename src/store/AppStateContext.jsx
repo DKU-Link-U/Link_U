@@ -21,7 +21,6 @@ import {
   mockNotifications,
   mockProjects,
   mockRankingList,
-  mockRating,
   mockStudyGroups,
 } from '../models'
 import { canAccessApp } from '../utils/auth'
@@ -113,6 +112,20 @@ const baseProjectFilters = {
   status: 'all',
 }
 
+const emptyRating = {
+  githubCommitCount: 0,
+  githubPrCount: 0,
+  githubPublicRepoCount: 0,
+  baekjoonTier: 'Unrated',
+  baekjoonTierNumber: 0,
+  baekjoonSolvedCount: 0,
+  baekjoonRating: 0,
+  dreamhackScore: 0,
+  dreamhackSolvedCount: 0,
+  totalRatingScore: 0,
+  history: [],
+}
+
 function toCommunityStatus(status) {
   return status === 'closed' || status === 'CLOSED' ? 'closed' : 'recruiting'
 }
@@ -124,10 +137,7 @@ const baseInitialState = {
     accessToken: '',
     initialized: true,
   },
-  rating: {
-    ...mockRating,
-    history: [],
-  },
+  rating: emptyRating,
   activity: {
     fieldStats: {},
     commitActivity: [],
@@ -234,14 +244,8 @@ function createInitialState() {
       accessToken: shouldBootstrapAuth ? persistedAccessToken : '',
       initialized: !shouldBootstrapAuth,
     },
-    rating: {
-      ...baseInitialState.rating,
-      ...persistedState.rating,
-    },
-    activity: {
-      ...baseInitialState.activity,
-      ...persistedState.activity,
-    },
+    rating: baseInitialState.rating,
+    activity: baseInitialState.activity,
     studies: {
       ...baseInitialState.studies,
       ...persistedState.studies,

@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom'
+import { routeTo } from '../routes/paths'
+
 const STATUS_META = {
   pending: {
     label: '대기',
@@ -96,13 +99,24 @@ export default function ApplicationReviewPanel({
           {applications.map(application => {
             const status = application.status ?? 'pending'
             const isUpdating = updatingId === application.id
+            const applicantId = application.applicantId || application.userId || application.applicant?.id
+            const applicantName = getApplicantName(application)
 
             return (
               <article key={application.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-bold text-gray-800">{getApplicantName(application)}</p>
+                      {applicantId ? (
+                        <Link
+                          to={routeTo.userProfile(applicantId)}
+                          className="text-sm font-bold text-gray-800 hover:text-primary hover:underline"
+                        >
+                          {applicantName}
+                        </Link>
+                      ) : (
+                        <p className="text-sm font-bold text-gray-800">{applicantName}</p>
+                      )}
                       <StatusBadge status={status} />
                     </div>
                     <p className="text-xs text-gray-500">
