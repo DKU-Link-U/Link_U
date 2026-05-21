@@ -26,7 +26,9 @@ export function getApplicationEligibility(item, { score = 0, application } = {})
     }
   }
 
-  if (item.currentCount >= item.capacity) {
+  const capacity = Number(item.capacity)
+
+  if (capacity > 0 && item.currentCount >= capacity) {
     return {
       canApply: false,
       status: 'full',

@@ -14,13 +14,15 @@ export default function StudyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { accessToken, currentUser, rating } = useAppState()
-  const { getStudyById, applyStudy, getStudyEligibility } = useStudies()
+  const { getStudyById, applyStudy, getStudyEligibility, updateStudyStatus } = useStudies()
   const [applicationError, setApplicationError] = useState('')
   const [isApplying, setIsApplying] = useState(false)
   const [applications, setApplications] = useState([])
   const [applicationsLoading, setApplicationsLoading] = useState(false)
   const [applicationsError, setApplicationsError] = useState('')
   const [updatingApplicationId, setUpdatingApplicationId] = useState('')
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [statusError, setStatusError] = useState('')
   const sg = getStudyById(id)
   const isOwner = Boolean(sg && sg.leaderId === getUserId(currentUser))
 
@@ -32,6 +34,8 @@ export default function StudyDetail() {
     let ignore = false
 
     async function loadInitialApplications() {
+      setApplicationsLoading(true)
+
       try {
         const list = await fetchStudyApplications(groupId, { accessToken })
 
@@ -42,6 +46,10 @@ export default function StudyDetail() {
       } catch (error) {
         if (!ignore) {
           setApplicationsError(error.message || '신청자 목록을 불러오지 못했습니다.')
+        }
+      } finally {
+        if (!ignore) {
+          setApplicationsLoading(false)
         }
       }
     }
@@ -79,6 +87,10 @@ export default function StudyDetail() {
   }
 
   const eligibility = getStudyEligibility(sg)
+  const acceptedApplications = applications.filter(application => application.status === 'accepted')
+  const displayCurrentCount = isOwner && !applicationsLoading && applications.length > 0
+    ? 1 + acceptedApplications.length
+    : sg.currentCount
 
   const handleApply = async () => {
     setApplicationError('')
@@ -99,15 +111,33 @@ export default function StudyDetail() {
 
     try {
       const updatedApplication = await updateApplicationStatus(applicationId, status, { accessToken })
-      setApplications(current =>
-        current.map(application =>
+      const nextApplications = applications.map(application =>
           application.id === updatedApplication.id ? updatedApplication : application,
-        ),
       )
+      const acceptedCount = nextApplications.filter(application => application.status === 'accepted').length
+
+      setApplications(nextApplications)
+
+      if (status === 'accepted' && sg.capacity > 0 && 1 + acceptedCount >= sg.capacity) {
+        await updateStudyStatus(sg.groupId, 'closed')
+      }
     } catch (error) {
       setApplicationsError(error.message || '신청 상태 변경에 실패했습니다.')
     } finally {
       setUpdatingApplicationId('')
+    }
+  }
+
+  const handleToggleRecruitmentStatus = async () => {
+    setStatusUpdating(true)
+    setStatusError('')
+
+    try {
+      await updateStudyStatus(sg.groupId, sg.status === 'recruiting' ? 'closed' : 'recruiting')
+    } catch (error) {
+      setStatusError(error.message || '모집 상태 변경에 실패했습니다.')
+    } finally {
+      setStatusUpdating(false)
     }
   }
 
@@ -147,7 +177,7 @@ export default function StudyDetail() {
           </div>
           <div>
             <p className="mb-0.5 text-xs text-gray-400">모집 인원</p>
-            <p className="font-semibold text-gray-800">{sg.currentCount}/{sg.capacity}명</p>
+            <p className="font-semibold text-gray-800">{displayCurrentCount}/{sg.capacity}명</p>
           </div>
           <div>
             <p className="mb-0.5 text-xs text-gray-400">최소 요구 점수</p>
@@ -160,8 +190,27 @@ export default function StudyDetail() {
         </div>
 
         {isOwner ? (
-          <div className="rounded-xl bg-primary/5 px-4 py-3 text-center text-xs font-medium text-primary">
-            내가 작성한 모집글입니다. 아래에서 신청자를 관리할 수 있습니다.
+          <div className="rounded-xl bg-primary/5 px-4 py-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs font-medium text-primary">
+                내가 작성한 모집글입니다. 아래에서 신청자를 관리할 수 있습니다.
+              </p>
+              <button
+                type="button"
+                onClick={handleToggleRecruitmentStatus}
+                disabled={statusUpdating}
+                className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                {statusUpdating
+                  ? '변경 중...'
+                  : sg.status === 'recruiting' ? '모집 마감' : '모집 재개'}
+              </button>
+            </div>
+            {statusError && (
+              <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-500">
+                {statusError}
+              </p>
+            )}
           </div>
         ) : eligibility.canApply ? (
           <div className="flex flex-col gap-2">

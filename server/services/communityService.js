@@ -31,9 +31,28 @@ function toRecruitmentPayload(type, body) {
   };
 }
 
+function getAcceptedApplicationCount(recruitment) {
+  if (!Array.isArray(recruitment.applications)) {
+    return 0;
+  }
+
+  return recruitment.applications.filter(application => application.status === 'ACCEPTED').length;
+}
+
+function getCapacity(recruitment) {
+  const capacity = Number(recruitment.maxMembers);
+  return Number.isFinite(capacity) && capacity > 0 ? capacity : null;
+}
+
+function getAcceptedApplicantLimit(recruitment) {
+  const capacity = getCapacity(recruitment);
+  return capacity === null ? null : Math.max(capacity - 1, 0);
+}
+
 function toCommunityItem(recruitment) {
   const isStudy = recruitment.type === 'STUDY';
   const idKey = isStudy ? 'groupId' : 'projectId';
+  const acceptedApplicationCount = getAcceptedApplicationCount(recruitment);
 
   return {
     [idKey]: recruitment.id,
@@ -44,7 +63,9 @@ function toCommunityItem(recruitment) {
     description: recruitment.description,
     requiredRating: 0,
     capacity: recruitment.maxMembers || 0,
-    currentCount: 1 + (recruitment._count?.applications || 0),
+    currentCount: 1 + acceptedApplicationCount,
+    acceptedCount: acceptedApplicationCount,
+    applicantCount: recruitment._count?.applications ?? recruitment.applications?.length ?? 0,
     techStack: recruitment.requiredSkills,
     requiredRoles: recruitment.requiredRoles,
     applicantList: [],
@@ -96,6 +117,51 @@ function toApplicationItem(application) {
 function assertRecruitmentAuthor(recruitment, userId) {
   if (recruitment.authorId !== userId) {
     throw createHttpError(403, '모집글 작성자만 지원자를 관리할 수 있습니다.');
+  }
+}
+
+async function assertRecruitmentHasOpenSlot(recruitment, excludeApplicationId) {
+  const acceptedApplicantLimit = getAcceptedApplicantLimit(recruitment);
+
+  if (acceptedApplicantLimit === null) {
+    return;
+  }
+
+  const where = {
+    recruitmentId: recruitment.id,
+    status: 'ACCEPTED',
+  };
+
+  if (excludeApplicationId) {
+    where.NOT = { id: excludeApplicationId };
+  }
+
+  const acceptedApplicantCount = await prisma.application.count({ where });
+
+  if (acceptedApplicantCount >= acceptedApplicantLimit) {
+    throw createHttpError(409, '모집 정원이 모두 찼습니다.');
+  }
+}
+
+async function closeRecruitmentIfFull(recruitment) {
+  const acceptedApplicantLimit = getAcceptedApplicantLimit(recruitment);
+
+  if (acceptedApplicantLimit === null || recruitment.status !== 'OPEN') {
+    return;
+  }
+
+  const acceptedApplicantCount = await prisma.application.count({
+    where: {
+      recruitmentId: recruitment.id,
+      status: 'ACCEPTED',
+    },
+  });
+
+  if (acceptedApplicantCount >= acceptedApplicantLimit) {
+    await prisma.recruitment.update({
+      where: { id: recruitment.id },
+      data: { status: 'CLOSED' },
+    });
   }
 }
 
@@ -154,6 +220,8 @@ async function applyCommunityRecruitment(type, recruitmentId, applicantId, body 
   if (existingApplication) {
     throw createHttpError(409, '이미 지원한 모집글입니다.');
   }
+
+  await assertRecruitmentHasOpenSlot(recruitment);
 
   const application = await prisma.application.create({
     data: {
@@ -231,9 +299,6 @@ async function getMyCommunityRecruitments(type, userId) {
         },
       },
       applications: {
-        where: {
-          applicantId: userId,
-        },
         include: {
           applicant: true,
         },
@@ -248,8 +313,9 @@ async function getMyCommunityRecruitments(type, userId) {
   });
 
   return recruitments.map((recruitment) => {
-    const myApplication = recruitment.applications[0]
-      ? toApplicationItem(recruitment.applications[0])
+    const myRawApplication = recruitment.applications.find(application => application.applicantId === userId);
+    const myApplication = myRawApplication
+      ? toApplicationItem(myRawApplication)
       : null;
 
     return {
@@ -281,6 +347,14 @@ async function updateApplicationStatus(applicationId, requesterId, status) {
 
   assertRecruitmentAuthor(application.recruitment, requesterId);
 
+  if (normalizedStatus === 'ACCEPTED') {
+    if (application.recruitment.status !== 'OPEN' && application.status !== 'ACCEPTED') {
+      throw createHttpError(400, '마감된 모집글에는 지원자를 승인할 수 없습니다.');
+    }
+
+    await assertRecruitmentHasOpenSlot(application.recruitment, application.id);
+  }
+
   const updatedApplication = await prisma.application.update({
     where: { id: applicationId },
     data: { status: normalizedStatus },
@@ -289,6 +363,10 @@ async function updateApplicationStatus(applicationId, requesterId, status) {
       recruitment: true,
     },
   });
+
+  if (normalizedStatus === 'ACCEPTED') {
+    await closeRecruitmentIfFull(updatedApplication.recruitment);
+  }
 
   await createNotification({
     receiverId: updatedApplication.applicantId,

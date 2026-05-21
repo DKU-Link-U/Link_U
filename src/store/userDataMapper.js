@@ -37,43 +37,17 @@ function calculateDraftRatingScore(rating) {
   )
 }
 
-function createEmptyCommitActivity() {
-  return Array.from({ length: 24 * 7 }, (_, index) => ({
-    date: new Date(Date.now() - (24 * 7 - index) * 86400000).toISOString().slice(0, 10),
-    github: 0,
-    baekjoon: 0,
-    dreamhack: 0,
-  }))
-}
-
 function buildSyncedActivity(data) {
-  const activity = createEmptyCommitActivity()
-  const githubStats = data.github?.stats
-  const bojInfo = data.boj
-  const dreamhackStats = data.dreamhack
+  const dailyCommits = data.github?.stats?.dailyCommits
 
-  if (githubStats) {
-    const totalCommits = toNumber(githubStats.totalCommits)
-    activity.forEach((day, index) => {
-      day.github = totalCommits > 0 && index % 3 !== 0 ? 1 + (index % 4) : 0
-    })
-  }
+  if (!Array.isArray(dailyCommits)) return []
 
-  if (bojInfo) {
-    const solvedCount = toNumber(bojInfo.solvedCount)
-    activity.forEach((day, index) => {
-      day.baekjoon = solvedCount > 0 && index % 5 === 0 ? 1 + (index % 3) : 0
-    })
-  }
-
-  if (dreamhackStats) {
-    const solvedCount = toNumber(dreamhackStats.wargame?.solvedCount)
-    activity.forEach((day, index) => {
-      day.dreamhack = solvedCount > 0 && index % 7 === 0 ? 1 + (index % 2) : 0
-    })
-  }
-
-  return activity
+  return dailyCommits
+    .map(day => ({
+      date: day.date,
+      github: toNumber(day.count),
+    }))
+    .filter(day => day.date && day.github > 0)
 }
 
 function buildFieldStats(rating) {

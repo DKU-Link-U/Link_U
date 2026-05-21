@@ -12,6 +12,7 @@ import {
   markMessageRead as markMessageReadRequest,
   markNotificationRead as markNotificationReadRequest,
   sendMessage as sendMessageRequest,
+  updateRecruitmentStatus as updateRecruitmentStatusRequest,
 } from '../api'
 import { clearStoredAccessToken, getStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
 import { fetchCurrentUser, fetchIntegratedUserData, fetchRatingHistory, fetchSavedExternalActivity } from '../api/userApi'
@@ -54,10 +55,12 @@ const ACTIONS = {
   ADD_STUDY: 'studies/add',
   APPLY_STUDY: 'studies/apply',
   LOAD_STUDIES_SUCCESS: 'studies/loadSuccess',
+  UPDATE_STUDY_STATUS_SUCCESS: 'studies/updateStatusSuccess',
   SET_PROJECT_FILTERS: 'projects/setFilters',
   ADD_PROJECT: 'projects/add',
   APPLY_PROJECT: 'projects/apply',
   LOAD_PROJECTS_SUCCESS: 'projects/loadSuccess',
+  UPDATE_PROJECT_STATUS_SUCCESS: 'projects/updateStatusSuccess',
   SET_RANKING_TAB: 'ranking/setTab',
 }
 
@@ -108,6 +111,10 @@ const baseStudyFilters = {
 const baseProjectFilters = {
   keyword: '',
   status: 'all',
+}
+
+function toCommunityStatus(status) {
+  return status === 'closed' || status === 'CLOSED' ? 'closed' : 'recruiting'
 }
 
 const baseInitialState = {
@@ -646,6 +653,17 @@ function appStateReducer(state, action) {
         },
       }
 
+    case ACTIONS.UPDATE_STUDY_STATUS_SUCCESS:
+      return {
+        ...state,
+        studies: {
+          ...state.studies,
+          items: state.studies.items.map(study =>
+            study.groupId === action.payload.groupId ? action.payload : study,
+          ),
+        },
+      }
+
     case ACTIONS.SET_PROJECT_FILTERS:
       return {
         ...state,
@@ -688,6 +706,17 @@ function appStateReducer(state, action) {
         projects: {
           ...state.projects,
           items: action.payload,
+        },
+      }
+
+    case ACTIONS.UPDATE_PROJECT_STATUS_SUCCESS:
+      return {
+        ...state,
+        projects: {
+          ...state.projects,
+          items: state.projects.items.map(project =>
+            project.projectId === action.payload.projectId ? action.payload : project,
+          ),
         },
       }
 
@@ -1012,6 +1041,24 @@ export function AppStateProvider({ children }) {
 
       return application
     }
+    const updateStudyStatus = async (groupId, status) => {
+      const study = state.studies.items.find(item => item.groupId === groupId)
+      const nextStatus = toCommunityStatus(status)
+
+      if (!study) {
+        throw new Error('스터디를 찾을 수 없습니다.')
+      }
+
+      await updateRecruitmentStatusRequest(groupId, nextStatus, { accessToken })
+
+      const updatedStudy = {
+        ...study,
+        status: nextStatus,
+      }
+
+      dispatch({ type: ACTIONS.UPDATE_STUDY_STATUS_SUCCESS, payload: updatedStudy })
+      return updatedStudy
+    }
     const addProject = async form => {
       const createdProject = await createProjectRequest(form, { currentUser, accessToken })
 
@@ -1034,6 +1081,24 @@ export function AppStateProvider({ children }) {
       })
 
       return application
+    }
+    const updateProjectStatus = async (projectId, status) => {
+      const project = state.projects.items.find(item => item.projectId === projectId)
+      const nextStatus = toCommunityStatus(status)
+
+      if (!project) {
+        throw new Error('프로젝트를 찾을 수 없습니다.')
+      }
+
+      await updateRecruitmentStatusRequest(projectId, nextStatus, { accessToken })
+
+      const updatedProject = {
+        ...project,
+        status: nextStatus,
+      }
+
+      dispatch({ type: ACTIONS.UPDATE_PROJECT_STATUS_SUCCESS, payload: updatedProject })
+      return updatedProject
     }
 
     return {
@@ -1103,10 +1168,12 @@ export function AppStateProvider({ children }) {
         dispatch({ type: ACTIONS.SET_STUDY_FILTERS, payload: filters }),
       addStudy,
       applyStudy,
+      updateStudyStatus,
       setProjectFilters: filters =>
         dispatch({ type: ACTIONS.SET_PROJECT_FILTERS, payload: filters }),
       addProject,
       applyProject,
+      updateProjectStatus,
       setRankingTab: tab => dispatch({ type: ACTIONS.SET_RANKING_TAB, payload: tab }),
     }
   }, [state])

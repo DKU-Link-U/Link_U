@@ -91,6 +91,7 @@ export function useStudies() {
     setStudyFilters,
     addStudy,
     applyStudy,
+    updateStudyStatus,
     getStudyEligibility,
   } = useAppState()
 
@@ -102,6 +103,7 @@ export function useStudies() {
     setStudyFilters,
     addStudy,
     applyStudy,
+    updateStudyStatus,
     getStudyEligibility,
     getStudyById: groupId => studies.find(study => study.groupId === groupId),
   }
@@ -116,6 +118,7 @@ export function useProjects() {
     setProjectFilters,
     addProject,
     applyProject,
+    updateProjectStatus,
     getProjectEligibility,
   } = useAppState()
 
@@ -127,6 +130,7 @@ export function useProjects() {
     setProjectFilters,
     addProject,
     applyProject,
+    updateProjectStatus,
     getProjectEligibility,
     getProjectById: projectId => projects.find(project => project.projectId === projectId),
   }
