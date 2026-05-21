@@ -3,6 +3,8 @@
  * MatchingEngine, User, Rating, StudyGroup, Project, Message, Notification
  */
 
+import { addDaysToDateKey, toKoreanDateKey } from '../utils/koreanTime'
+
 // ─── User ───────────────────────────────────────────────────────────────────
 export const mockUser = {
   userId: 'user_001',
@@ -217,8 +219,10 @@ export const mockRankingList = [
 
 // ─── Commit Activity (잔디용 — 최근 24주 샘플) ────────────────────────────────
 function generateGrass(weeks = 24) {
+  const todayKey = toKoreanDateKey()
+
   return Array.from({ length: weeks * 7 }, (_, i) => ({
-    date: new Date(Date.now() - (weeks * 7 - i) * 86400000).toISOString().slice(0, 10),
+    date: addDaysToDateKey(todayKey, i - weeks * 7 + 1),
     github: Math.floor(Math.random() * 8),
     baekjoon: Math.floor(Math.random() * 5),
     dreamhack: Math.floor(Math.random() * 4),

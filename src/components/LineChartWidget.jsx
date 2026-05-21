@@ -1,4 +1,5 @@
 import { useActivityStats } from '../store'
+import { addDaysToDateKey, toKoreanDateKey } from '../utils/koreanTime'
 
 const TREND_SLOT_COUNT = 14
 const CHART_LEFT = 12
@@ -12,16 +13,6 @@ function toNumber(value) {
   return Number.isFinite(numericValue) ? numericValue : 0
 }
 
-function toDateKey(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
-}
-
 function getHistoryDate(item) {
   return item.date ?? item.recordedDate ?? ''
 }
@@ -33,13 +24,8 @@ function getHistoryLabel(item) {
 }
 
 function pickRecentTwoWeekHistory(history) {
-  const today = new Date()
-  const todayKey = toDateKey(today)
-  const startDate = new Date(today)
-
-  startDate.setDate(today.getDate() - (TREND_SLOT_COUNT - 1))
-
-  const startKey = toDateKey(startDate)
+  const todayKey = toKoreanDateKey()
+  const startKey = addDaysToDateKey(todayKey, -(TREND_SLOT_COUNT - 1))
   const byDate = new Map()
 
   history.forEach(item => {

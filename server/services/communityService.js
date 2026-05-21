@@ -1,6 +1,7 @@
 const recruitmentService = require('./recruitmentService');
 const prisma = require('../config/prisma');
 const { createNotification } = require('./notificationService');
+const { toKoreanDateKey, toKoreanIsoString } = require('../utils/koreanTime');
 
 function toCommunityStatus(status) {
   return status === 'OPEN' ? 'recruiting' : 'closed';
@@ -71,7 +72,7 @@ function toCommunityItem(recruitment) {
     requiredRoles: recruitment.requiredRoles,
     applicantList: [],
     status: toCommunityStatus(recruitment.status),
-    createdAt: recruitment.createdAt.toISOString().slice(0, 10),
+    createdAt: toKoreanDateKey(recruitment.createdAt),
     startDate: recruitment.startDate,
     endDate: recruitment.endDate,
   };
@@ -101,7 +102,7 @@ function toApplicationItem(application) {
     recruitmentId: application.recruitmentId,
     status: application.status.toLowerCase(),
     message: application.message,
-    appliedAt: application.createdAt.toISOString(),
+    appliedAt: toKoreanIsoString(application.createdAt),
     applicant: application.applicant ? {
       id: application.applicant.id,
       email: application.applicant.email,

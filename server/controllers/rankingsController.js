@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { toKoreanDateKey } = require('../utils/koreanTime');
 
 function toNumber(value, fallback = 0) {
   const numericValue = Number(value);
@@ -16,11 +17,7 @@ function getTier(score) {
 function toDateKey(dateValue) {
   if (!dateValue) return '';
 
-  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) return '';
-
-  return date.toISOString().slice(0, 10);
+  return toKoreanDateKey(dateValue);
 }
 
 function mapRatingHistory(history = []) {

@@ -1,12 +1,14 @@
 const axios = require('axios');
 require('dotenv').config();
+const {
+  addDaysToDateKey,
+  dateKeyToKoreanDayUtcDate,
+  toKoreanDateKey,
+} = require('../utils/koreanTime');
 
 class GitHubClient {
   constructor() {
     const token = process.env.GITHUB_TOKEN;
-    const timezoneOffset = Number.parseInt(process.env.ACTIVITY_TIMEZONE_OFFSET_MINUTES || '540', 10);
-
-    this.activityTimezoneOffsetMinutes = Number.isFinite(timezoneOffset) ? timezoneOffset : 540;
     this.client = axios.create({
       baseURL: 'https://api.github.com',
       headers: {
@@ -27,40 +29,16 @@ class GitHubClient {
   }
 
   toDateKey(date) {
-    const zonedDate = new Date(date.getTime() + this.activityTimezoneOffsetMinutes * 60 * 1000);
-
-    return zonedDate.toISOString().slice(0, 10);
-  }
-
-  addDaysToDateKey(dateKey, days) {
-    const [year, month, day] = dateKey.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day + days));
-
-    return date.toISOString().slice(0, 10);
-  }
-
-  dateKeyToUtcDate(dateKey, endOfDay = false) {
-    const [year, month, day] = dateKey.split('-').map(Number);
-    const utcMillis = Date.UTC(
-      year,
-      month - 1,
-      day,
-      endOfDay ? 23 : 0,
-      endOfDay ? 59 : 0,
-      endOfDay ? 59 : 0,
-      endOfDay ? 999 : 0,
-    ) - this.activityTimezoneOffsetMinutes * 60 * 1000;
-
-    return new Date(utcMillis);
+    return toKoreanDateKey(date);
   }
 
   getRecentRange(weeks = 26) {
     const untilKey = this.toDateKey(new Date());
-    const sinceKey = this.addDaysToDateKey(untilKey, -(weeks * 7) + 1);
+    const sinceKey = addDaysToDateKey(untilKey, -(weeks * 7) + 1);
 
     return {
-      since: this.dateKeyToUtcDate(sinceKey),
-      until: this.dateKeyToUtcDate(untilKey, true),
+      since: dateKeyToKoreanDayUtcDate(sinceKey),
+      until: dateKeyToKoreanDayUtcDate(untilKey, true),
       sinceKey,
       untilKey,
     };
