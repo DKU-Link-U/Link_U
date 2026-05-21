@@ -4,6 +4,8 @@ import {
   applyStudy as applyStudyRequest,
   createProject as createProjectRequest,
   createStudy as createStudyRequest,
+  fetchProjects as fetchProjectsRequest,
+  fetchStudies as fetchStudiesRequest,
   fetchMessages as fetchMessagesRequest,
   fetchNotifications as fetchNotificationsRequest,
   markAllNotificationsRead as markAllNotificationsReadRequest,
@@ -50,9 +52,11 @@ const ACTIONS = {
   SET_STUDY_FILTERS: 'studies/setFilters',
   ADD_STUDY: 'studies/add',
   APPLY_STUDY: 'studies/apply',
+  LOAD_STUDIES_SUCCESS: 'studies/loadSuccess',
   SET_PROJECT_FILTERS: 'projects/setFilters',
   ADD_PROJECT: 'projects/add',
   APPLY_PROJECT: 'projects/apply',
+  LOAD_PROJECTS_SUCCESS: 'projects/loadSuccess',
   SET_RANKING_TAB: 'ranking/setTab',
 }
 
@@ -616,6 +620,15 @@ function appStateReducer(state, action) {
         },
       }
 
+    case ACTIONS.LOAD_STUDIES_SUCCESS:
+      return {
+        ...state,
+        studies: {
+          ...state.studies,
+          items: action.payload,
+        },
+      }
+
     case ACTIONS.SET_PROJECT_FILTERS:
       return {
         ...state,
@@ -649,6 +662,15 @@ function appStateReducer(state, action) {
             ...state.projects.applications,
             [action.payload.projectId]: action.payload.application,
           },
+        },
+      }
+
+    case ACTIONS.LOAD_PROJECTS_SUCCESS:
+      return {
+        ...state,
+        projects: {
+          ...state.projects,
+          items: action.payload,
         },
       }
 
@@ -741,6 +763,34 @@ export function AppStateProvider({ children }) {
       canceled = true
     }
   }, [state.auth.isAuthenticated, state.auth.accessToken, state.auth.user?.id])
+
+  useEffect(() => {
+    if (!state.auth.isAuthenticated) return
+
+    let canceled = false
+
+    async function loadCommunityData() {
+      try {
+        const [studies, projects] = await Promise.all([
+          fetchStudiesRequest(),
+          fetchProjectsRequest(),
+        ])
+
+        if (canceled) return
+
+        dispatch({ type: ACTIONS.LOAD_STUDIES_SUCCESS, payload: studies })
+        dispatch({ type: ACTIONS.LOAD_PROJECTS_SUCCESS, payload: projects })
+      } catch (error) {
+        console.warn('[Link_U] Failed to load study/project lists.', error)
+      }
+    }
+
+    loadCommunityData()
+
+    return () => {
+      canceled = true
+    }
+  }, [state.auth.isAuthenticated])
 
   useEffect(() => {
     if (!state.auth.isAuthenticated || !state.auth.accessToken) return

@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { getMyCommunityRecruitments } = require('../services/communityService');
 const { toSafeUser } = require('../services/authService');
 const { unlinkExternalAccount } = require('../services/accountLinkService');
 const {
@@ -211,12 +212,48 @@ async function getMyRatingHistory(req, res) {
   }
 }
 
+async function getMyStudies(req, res) {
+  try {
+    const studies = await getMyCommunityRecruitments('STUDY', req.user.id);
+
+    return res.json({
+      success: true,
+      data: studies,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.publicMessage || 'Failed to load my studies.',
+      error: error.message,
+    });
+  }
+}
+
+async function getMyProjects(req, res) {
+  try {
+    const projects = await getMyCommunityRecruitments('PROJECT', req.user.id);
+
+    return res.json({
+      success: true,
+      data: projects,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.publicMessage || 'Failed to load my projects.',
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   getAccountLinks,
   getMe,
   updateMe,
   disconnectAccountLink,
   getMyExternalActivity,
+  getMyProjects,
   getMyRatingHistory,
+  getMyStudies,
   syncMyExternalActivity,
 };

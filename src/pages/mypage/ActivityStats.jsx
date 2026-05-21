@@ -1,25 +1,49 @@
+import { Link } from 'react-router-dom'
 import CommitGrass from '../../components/CommitGrass'
 import LineChartWidget from '../../components/LineChartWidget'
 import RadarChartWidget from '../../components/RadarChartWidget'
-import { useAppState } from '../../store'
+import { routeTo } from '../../routes/paths'
+import { useAppState, useMyProjectsData, useMyStudiesData } from '../../store'
 
-const COMPLETED_STUDIES = [
-  { id: 1, title: 'Java 기초 스터디', period: '2025.09 ~ 2025.12', members: 5 },
-  { id: 2, title: '자료구조 알고리즘', period: '2026.01 ~ 2026.03', members: 4 },
-]
-
-const COMPLETED_PROJECTS = [
-  { id: 1, title: '도서관 좌석 예약 시스템', period: '2025.10 ~ 2025.12', role: '백엔드' },
-]
+function CompletedList({ emptyText, items, linkTo, title, tone }) {
+  return (
+    <div className="rounded-2xl bg-white p-5 shadow-md">
+      <h3 className="mb-3 text-sm font-bold text-gray-700">{title}</h3>
+      {items.length === 0 ? (
+        <p className="text-xs text-gray-400">{emptyText}</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {items.map(item => (
+            <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 p-3">
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-gray-800">{item.title}</p>
+                <p className="mt-1 text-[10px] text-gray-400">
+                  리더 {item.leaderName} · {item.currentCount}/{item.capacity}명
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-[10px] ${tone}`}>완료</span>
+                <Link to={linkTo(item)} className="text-[10px] font-semibold text-primary hover:underline">보기</Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ActivityStats() {
   const { rating, syncedPlatforms } = useAppState()
+  const { items: myStudies } = useMyStudiesData()
+  const { items: myProjects } = useMyProjectsData()
+  const completedStudies = myStudies.filter(study => study.status === 'closed')
+  const completedProjects = myProjects.filter(project => project.status === 'closed')
 
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-base font-bold text-gray-800">내 활동 통계</h2>
 
-      {/* 점수 요약 */}
       <div className="grid grid-cols-3 gap-3">
         {[
           {
@@ -37,60 +61,38 @@ export default function ActivityStats() {
             value: syncedPlatforms.dreamhack ? (rating.dreamhackScore ?? 0) : '연동 필요',
             unit: syncedPlatforms.dreamhack ? '점' : '',
           },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-2xl shadow-md p-4 text-center">
-            <p className="text-[10px] text-gray-400 mb-1">{s.label}</p>
-            <p className={`text-xl font-bold ${s.value === '연동 필요' ? 'text-gray-400 text-sm' : 'text-primary'}`}>
-              {s.value}<span className="text-xs font-normal text-gray-500 ml-0.5">{s.unit}</span>
+        ].map(stat => (
+          <div key={stat.label} className="rounded-2xl bg-white p-4 text-center shadow-md">
+            <p className="mb-1 text-[10px] text-gray-400">{stat.label}</p>
+            <p className={`text-xl font-bold ${stat.value === '연동 필요' ? 'text-sm text-gray-400' : 'text-primary'}`}>
+              {stat.value}<span className="ml-0.5 text-xs font-normal text-gray-500">{stat.unit}</span>
             </p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <RadarChartWidget />
         <CommitGrass />
       </div>
 
       <LineChartWidget />
 
-      {/* 종료된 스터디 */}
-      <div className="bg-white rounded-2xl shadow-md p-5">
-        <h3 className="text-sm font-bold text-gray-700 mb-3">종료된 스터디</h3>
-        {COMPLETED_STUDIES.length === 0
-          ? <p className="text-xs text-gray-400">참여한 스터디가 없습니다.</p>
-          : <div className="flex flex-col gap-2">
-              {COMPLETED_STUDIES.map(s => (
-                <div key={s.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-800">{s.title}</p>
-                    <p className="text-[10px] text-gray-400">{s.period} · {s.members}명</p>
-                  </div>
-                  <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">완료</span>
-                </div>
-              ))}
-            </div>
-        }
-      </div>
+      <CompletedList
+        emptyText="종료된 스터디가 없습니다."
+        items={completedStudies}
+        linkTo={item => routeTo.studyDetail(item.groupId)}
+        title="종료된 스터디"
+        tone="bg-gray-200 text-gray-600"
+      />
 
-      {/* 완성된 프로젝트 */}
-      <div className="bg-white rounded-2xl shadow-md p-5">
-        <h3 className="text-sm font-bold text-gray-700 mb-3">완성된 프로젝트</h3>
-        {COMPLETED_PROJECTS.length === 0
-          ? <p className="text-xs text-gray-400">완성된 프로젝트가 없습니다.</p>
-          : <div className="flex flex-col gap-2">
-              {COMPLETED_PROJECTS.map(p => (
-                <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-800">{p.title}</p>
-                    <p className="text-[10px] text-gray-400">{p.period} · 역할: {p.role}</p>
-                  </div>
-                  <span className="text-[10px] bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">완료</span>
-                </div>
-              ))}
-            </div>
-        }
-      </div>
+      <CompletedList
+        emptyText="완료된 프로젝트가 없습니다."
+        items={completedProjects}
+        linkTo={item => routeTo.projectDetail(item.projectId)}
+        title="완료된 프로젝트"
+        tone="bg-purple-100 text-purple-600"
+      />
     </div>
   )
 }

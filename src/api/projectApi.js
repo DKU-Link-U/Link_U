@@ -43,6 +43,22 @@ export async function fetchProjectDetail(projectId) {
   })
 }
 
+export async function fetchProjectApplications(projectId, { accessToken } = {}) {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/applications`, {
+    accessToken,
+    fallback: () => [],
+    errorMessage: 'Failed to load project applications.',
+  })
+}
+
+export async function fetchMyProjects({ accessToken, fallback } = {}) {
+  return requestJson('/api/users/me/projects', {
+    accessToken,
+    fallback,
+    errorMessage: 'Failed to load my projects.',
+  })
+}
+
 export async function createProject(form, { currentUser, accessToken } = {}) {
   return requestJson('/api/projects', {
     method: 'POST',
