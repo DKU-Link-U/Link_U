@@ -11,7 +11,17 @@ function toNumber(value) {
 }
 
 function toDateKey(date) {
-  return date.toISOString().slice(0, 10)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function parseDateKey(dateKey) {
+  const [year, month, day] = String(dateKey).split('-').map(Number)
+
+  return new Date(year, month - 1, day)
 }
 
 function normalizeDay(rawDay) {
@@ -87,7 +97,8 @@ function buildGrid(activity = []) {
 }
 
 function calcStats(weeks) {
-  const days = weeks.flat().filter(Boolean)
+  const todayKey = toDateKey(new Date())
+  const days = weeks.flat().filter(day => day?.date && day.date <= todayKey)
   const activeDays = days.filter(day => toNumber(day.github) > 0).length
   const totalCommits = days.reduce((sum, day) => sum + toNumber(day.github), 0)
   const weekAvg = Math.round((totalCommits / 26) * 10) / 10
@@ -109,7 +120,7 @@ function calcStats(weeks) {
 
 function Tooltip({ day, rect }) {
   const count = toNumber(day.github)
-  const date = new Date(day.date)
+  const date = parseDateKey(day.date)
   const dateLabel = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${WEEKDAY_KO[date.getDay()]})`
   const showBelow = rect.top < 120
   const stylePos = showBelow

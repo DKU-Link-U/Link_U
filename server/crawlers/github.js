@@ -4,6 +4,9 @@ require('dotenv').config();
 class GitHubClient {
   constructor() {
     const token = process.env.GITHUB_TOKEN;
+    const timezoneOffset = Number.parseInt(process.env.ACTIVITY_TIMEZONE_OFFSET_MINUTES || '540', 10);
+
+    this.activityTimezoneOffsetMinutes = Number.isFinite(timezoneOffset) ? timezoneOffset : 540;
     this.client = axios.create({
       baseURL: 'https://api.github.com',
       headers: {
@@ -24,26 +27,47 @@ class GitHubClient {
   }
 
   toDateKey(date) {
+    const zonedDate = new Date(date.getTime() + this.activityTimezoneOffsetMinutes * 60 * 1000);
+
+    return zonedDate.toISOString().slice(0, 10);
+  }
+
+  addDaysToDateKey(dateKey, days) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day + days));
+
     return date.toISOString().slice(0, 10);
   }
 
-  getRecentRange(weeks = 26) {
-    const until = new Date();
-    until.setUTCHours(23, 59, 59, 999);
+  dateKeyToUtcDate(dateKey, endOfDay = false) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const utcMillis = Date.UTC(
+      year,
+      month - 1,
+      day,
+      endOfDay ? 23 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 999 : 0,
+    ) - this.activityTimezoneOffsetMinutes * 60 * 1000;
 
-    const since = new Date(until);
-    since.setUTCDate(since.getUTCDate() - (weeks * 7) + 1);
-    since.setUTCHours(0, 0, 0, 0);
+    return new Date(utcMillis);
+  }
+
+  getRecentRange(weeks = 26) {
+    const untilKey = this.toDateKey(new Date());
+    const sinceKey = this.addDaysToDateKey(untilKey, -(weeks * 7) + 1);
 
     return {
-      since,
-      sinceKey: this.toDateKey(since),
-      untilKey: this.toDateKey(until),
+      since: this.dateKeyToUtcDate(sinceKey),
+      until: this.dateKeyToUtcDate(untilKey, true),
+      sinceKey,
+      untilKey,
     };
   }
 
   async getDailyCommitCounts(username, { weeks = 26 } = {}) {
-    const { since, sinceKey, untilKey } = this.getRecentRange(weeks);
+    const { since, until, sinceKey, untilKey } = this.getRecentRange(weeks);
     const dailyCounts = new Map();
     let page = 1;
     let hasNextPage = true;
@@ -67,7 +91,7 @@ class GitHubClient {
 
         const committedDate = new Date(committedAt);
 
-        if (Number.isNaN(committedDate.getTime()) || committedDate < since) return;
+        if (Number.isNaN(committedDate.getTime()) || committedDate < since || committedDate > until) return;
 
         const dateKey = this.toDateKey(committedDate);
         dailyCounts.set(dateKey, (dailyCounts.get(dateKey) || 0) + 1);

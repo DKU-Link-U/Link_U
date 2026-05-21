@@ -5,6 +5,7 @@ import {
   createProject as createProjectRequest,
   createStudy as createStudyRequest,
   fetchProjects as fetchProjectsRequest,
+  fetchStudyRecommendations as fetchStudyRecommendationsRequest,
   fetchStudies as fetchStudiesRequest,
   fetchMessages as fetchMessagesRequest,
   fetchNotifications as fetchNotificationsRequest,
@@ -1028,6 +1029,11 @@ export function AppStateProvider({ children }) {
       dispatch({ type: ACTIONS.ADD_STUDY, payload: createdStudy })
       return createdStudy
     }
+    const recommendStudies = async () => fetchStudyRecommendationsRequest({
+      currentUser,
+      rating: state.rating,
+      studies: state.studies.items,
+    }, { accessToken })
     const applyStudy = async groupId => {
       const study = state.studies.items.find(item => item.groupId === groupId)
       const eligibility = getStudyEligibility(study)
@@ -1171,6 +1177,7 @@ export function AppStateProvider({ children }) {
       setStudyFilters: filters =>
         dispatch({ type: ACTIONS.SET_STUDY_FILTERS, payload: filters }),
       addStudy,
+      recommendStudies,
       applyStudy,
       updateStudyStatus,
       setProjectFilters: filters =>
