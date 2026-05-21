@@ -70,6 +70,7 @@ model User {
   applications      Application[]
   activitySnapshots ExternalActivitySnapshot[]
   activityStats     UserActivityStats?
+  ratingHistory     UserRatingHistory[]
   sentMessages      Message[]                  @relation("MessageSender")
   receivedMessages  Message[]                  @relation("MessageReceiver")
   notifications     Notification[]             @relation("NotificationReceiver")
@@ -153,6 +154,27 @@ model UserActivityStats {
   lastSyncedAt         DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+}
+
+model UserRatingHistory {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordedDate         DateTime
+  totalRatingScore     Int      @default(0)
+  githubCommitCount    Int      @default(0)
+  githubPrCount        Int      @default(0)
+  bojSolvedCount       Int      @default(0)
+  bojTierNumber        Int?
+  bojRating            Int?
+  dreamhackScore       Int      @default(0)
+  dreamhackSolvedCount Int      @default(0)
+  dreamhackRank        Int?
+  recordedAt           DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([userId, recordedDate])
+  @@index([userId, recordedAt])
 }
 
 model Message {

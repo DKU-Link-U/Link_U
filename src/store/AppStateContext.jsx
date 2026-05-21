@@ -12,7 +12,7 @@ import {
   sendMessage as sendMessageRequest,
 } from '../api'
 import { clearStoredAccessToken, getStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
-import { fetchCurrentUser, fetchIntegratedUserData } from '../api/userApi'
+import { fetchCurrentUser, fetchIntegratedUserData, fetchRatingHistory } from '../api/userApi'
 import {
   mockMessages,
   mockNotifications,
@@ -38,6 +38,7 @@ const ACTIONS = {
   ADD_MESSAGE: 'messages/add',
   MARK_MESSAGE_READ: 'messages/markRead',
   LOAD_MESSAGES_SUCCESS: 'messages/loadSuccess',
+  LOAD_RATING_HISTORY_SUCCESS: 'rating/historyLoadSuccess',
   LOAD_EXTERNAL_PROFILE_START: 'externalProfile/loadStart',
   LOAD_EXTERNAL_PROFILE_SUCCESS: 'externalProfile/loadSuccess',
   LOAD_EXTERNAL_PROFILE_ERROR: 'externalProfile/loadError',
@@ -111,7 +112,10 @@ const baseInitialState = {
     accessToken: '',
     initialized: true,
   },
-  rating: mockRating,
+  rating: {
+    ...mockRating,
+    history: [],
+  },
   activity: {
     fieldStats: {},
     commitActivity: [],
@@ -463,6 +467,15 @@ function appStateReducer(state, action) {
         messages: action.payload,
       }
 
+    case ACTIONS.LOAD_RATING_HISTORY_SUCCESS:
+      return {
+        ...state,
+        rating: {
+          ...state.rating,
+          history: action.payload ?? [],
+        },
+      }
+
     case ACTIONS.LOAD_EXTERNAL_PROFILE_START:
       return {
         ...state,
@@ -484,7 +497,10 @@ function appStateReducer(state, action) {
           ...state.auth,
           user: action.payload.user,
         },
-        rating: action.payload.rating,
+        rating: {
+          ...action.payload.rating,
+          history: action.payload.ratingHistory ?? action.payload.rating.history ?? [],
+        },
         activity: {
           ...state.activity,
           ...action.payload.activity,
@@ -726,6 +742,30 @@ export function AppStateProvider({ children }) {
     }
   }, [state.auth.isAuthenticated, state.auth.accessToken, state.auth.user?.id])
 
+  useEffect(() => {
+    if (!state.auth.isAuthenticated || !state.auth.accessToken) return
+
+    let canceled = false
+
+    async function loadRatingHistory() {
+      try {
+        const history = await fetchRatingHistory({ accessToken: state.auth.accessToken })
+
+        if (!canceled) {
+          dispatch({ type: ACTIONS.LOAD_RATING_HISTORY_SUCCESS, payload: history })
+        }
+      } catch (error) {
+        console.warn('[Link_U] Failed to load rating history.', error)
+      }
+    }
+
+    loadRatingHistory()
+
+    return () => {
+      canceled = true
+    }
+  }, [state.auth.isAuthenticated, state.auth.accessToken, state.auth.user?.id])
+
   const value = useMemo(() => {
     const currentUser = state.auth.user
     const accessToken = state.auth.accessToken
@@ -774,11 +814,21 @@ export function AppStateProvider({ children }) {
       try {
         const result = await fetchIntegratedUserData(ids, { accessToken })
         const mappedData = mapIntegratedUserData(result.data, state, ids)
+        let ratingHistory = state.rating.history ?? []
+
+        if (accessToken) {
+          try {
+            ratingHistory = await fetchRatingHistory({ accessToken })
+          } catch (historyError) {
+            console.warn('[Link_U] Failed to reload rating history after sync.', historyError)
+          }
+        }
 
         dispatch({
           type: ACTIONS.LOAD_EXTERNAL_PROFILE_SUCCESS,
           payload: {
             ...mappedData,
+            ratingHistory,
             ids,
             data: result.data,
             errors: result.errors,

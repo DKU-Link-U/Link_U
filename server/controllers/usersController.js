@@ -4,6 +4,7 @@ const { unlinkExternalAccount } = require('../services/accountLinkService');
 const {
   collectExternalActivityForUser,
   getSavedExternalActivity,
+  getUserRatingHistory,
   saveExternalActivitySync,
 } = require('../services/externalActivityService');
 
@@ -189,11 +190,33 @@ async function getMyExternalActivity(req, res) {
   }
 }
 
+async function getMyRatingHistory(req, res) {
+  try {
+    const history = await getUserRatingHistory(req.user.id, {
+      limit: req.query.limit,
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        history,
+      },
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.publicMessage || 'Failed to load rating history.',
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   getAccountLinks,
   getMe,
   updateMe,
   disconnectAccountLink,
   getMyExternalActivity,
+  getMyRatingHistory,
   syncMyExternalActivity,
 };

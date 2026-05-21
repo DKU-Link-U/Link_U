@@ -15,9 +15,59 @@ const PLATFORM_ENUMS = {
   dreamhack: 'DREAMHACK',
 };
 
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
 function toNumber(value, fallback = 0) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function getKstRecordedDate(date = new Date()) {
+  const shiftedDate = new Date(date.getTime() + KST_OFFSET_MS);
+
+  return new Date(Date.UTC(
+    shiftedDate.getUTCFullYear(),
+    shiftedDate.getUTCMonth(),
+    shiftedDate.getUTCDate(),
+  ));
+}
+
+function toRatingHistoryData(userId, stats, syncedAt) {
+  return {
+    userId,
+    recordedDate: getKstRecordedDate(syncedAt),
+    totalRatingScore: toNumber(stats?.totalRatingScore),
+    githubCommitCount: toNumber(stats?.githubCommitCount),
+    githubPrCount: toNumber(stats?.githubPrCount),
+    bojSolvedCount: toNumber(stats?.bojSolvedCount),
+    bojTierNumber: stats?.bojTierNumber ?? null,
+    bojRating: stats?.bojRating ?? null,
+    dreamhackScore: toNumber(stats?.dreamhackScore),
+    dreamhackSolvedCount: toNumber(stats?.dreamhackSolvedCount),
+    dreamhackRank: stats?.dreamhackRank ?? null,
+    recordedAt: syncedAt,
+  };
+}
+
+function toRatingHistoryDto(item) {
+  const date = item.recordedDate.toISOString().slice(0, 10);
+
+  return {
+    id: item.id,
+    date,
+    month: date.slice(5),
+    score: item.totalRatingScore,
+    totalRatingScore: item.totalRatingScore,
+    githubCommitCount: item.githubCommitCount,
+    githubPrCount: item.githubPrCount,
+    bojSolvedCount: item.bojSolvedCount,
+    bojTierNumber: item.bojTierNumber,
+    bojRating: item.bojRating,
+    dreamhackScore: item.dreamhackScore,
+    dreamhackSolvedCount: item.dreamhackSolvedCount,
+    dreamhackRank: item.dreamhackRank,
+    recordedAt: item.recordedAt,
+  };
 }
 
 function normalizeAccountId(value) {
@@ -254,6 +304,34 @@ async function upsertUserActivityStats(userId, summaries, syncedAt) {
   });
 }
 
+async function upsertUserRatingHistory(userId, stats, syncedAt) {
+  if (!stats) return null;
+
+  const data = toRatingHistoryData(userId, stats, syncedAt);
+
+  return prisma.userRatingHistory.upsert({
+    where: {
+      userId_recordedDate: {
+        userId,
+        recordedDate: data.recordedDate,
+      },
+    },
+    create: data,
+    update: {
+      totalRatingScore: data.totalRatingScore,
+      githubCommitCount: data.githubCommitCount,
+      githubPrCount: data.githubPrCount,
+      bojSolvedCount: data.bojSolvedCount,
+      bojTierNumber: data.bojTierNumber,
+      bojRating: data.bojRating,
+      dreamhackScore: data.dreamhackScore,
+      dreamhackSolvedCount: data.dreamhackSolvedCount,
+      dreamhackRank: data.dreamhackRank,
+      recordedAt: data.recordedAt,
+    },
+  });
+}
+
 async function saveExternalActivitySync(userId, collection) {
   const syncedAt = new Date();
   const snapshots = await Promise.all(collection.results.map((result) => prisma.externalActivitySnapshot.create({
@@ -274,26 +352,43 @@ async function saveExternalActivitySync(userId, collection) {
   const stats = summaries.length > 0
     ? await upsertUserActivityStats(userId, summaries, syncedAt)
     : await prisma.userActivityStats.findUnique({ where: { userId } });
+  const ratingHistory = summaries.length > 0
+    ? await upsertUserRatingHistory(userId, stats, syncedAt)
+    : null;
 
   return {
     snapshots,
     stats,
+    ratingHistory: ratingHistory ? toRatingHistoryDto(ratingHistory) : null,
   };
 }
 
+async function getUserRatingHistory(userId, { limit = 30 } = {}) {
+  const take = Math.min(Math.max(Number(limit) || 30, 1), 90);
+  const history = await prisma.userRatingHistory.findMany({
+    where: { userId },
+    orderBy: { recordedDate: 'desc' },
+    take,
+  });
+
+  return history.reverse().map(toRatingHistoryDto);
+}
+
 async function getSavedExternalActivity(userId) {
-  const [stats, snapshots] = await Promise.all([
+  const [stats, snapshots, ratingHistory] = await Promise.all([
     prisma.userActivityStats.findUnique({ where: { userId } }),
     prisma.externalActivitySnapshot.findMany({
       where: { userId },
       orderBy: { syncedAt: 'desc' },
       take: 30,
     }),
+    getUserRatingHistory(userId),
   ]);
 
   return {
     stats,
     snapshots,
+    ratingHistory,
   };
 }
 
@@ -301,5 +396,6 @@ module.exports = {
   collectExternalActivityByIds,
   collectExternalActivityForUser,
   getSavedExternalActivity,
+  getUserRatingHistory,
   saveExternalActivitySync,
 };
