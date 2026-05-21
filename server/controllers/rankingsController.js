@@ -15,7 +15,8 @@ function getTier(score) {
 
 function mapRankingUser(user, index) {
   const stats = user.activityStats;
-  const score = toNumber(stats?.totalRatingScore);
+  const scoreRecord = user.score;
+  const score = toNumber(scoreRecord?.totalScore ?? stats?.totalRatingScore);
 
   return {
     userId: user.id,
@@ -29,15 +30,35 @@ function mapRankingUser(user, index) {
     githubId: user.githubId,
     bojId: user.bojId,
     dreamhackId: user.dreamhackId,
+    fieldStats: scoreRecord?.fieldDisplayScores ?? {},
+    scoreBreakdown: scoreRecord
+      ? {
+          githubScore: scoreRecord.githubScore,
+          bojScore: scoreRecord.bojScore,
+          dreamhackScore: scoreRecord.dreamhackScore,
+          algorithmScore: scoreRecord.algorithmScore,
+          securityScore: scoreRecord.securityScore,
+          implementationScore: scoreRecord.implementationScore,
+          collaborationScore: scoreRecord.collaborationScore,
+          problemSolvingScore: scoreRecord.problemSolvingScore,
+          activityScore: scoreRecord.activityScore,
+          scoreVersion: scoreRecord.scoreVersion,
+          calculatedAt: scoreRecord.calculatedAt,
+        }
+      : null,
     stats: {
       githubCommitCount: toNumber(stats?.githubCommitCount),
       githubPrCount: toNumber(stats?.githubPrCount),
+      githubPublicRepoCount: toNumber(stats?.githubPublicRepoCount),
       bojSolvedCount: toNumber(stats?.bojSolvedCount),
       bojTierNumber: stats?.bojTierNumber ?? null,
       bojRating: stats?.bojRating ?? null,
+      bojRank: stats?.bojRank ?? null,
       dreamhackScore: toNumber(stats?.dreamhackScore),
       dreamhackSolvedCount: toNumber(stats?.dreamhackSolvedCount),
       dreamhackRank: stats?.dreamhackRank ?? null,
+      dreamhackContributionLevel: toNumber(stats?.dreamhackContributionLevel),
+      dreamhackContributionRank: stats?.dreamhackContributionRank ?? null,
       lastSyncedAt: stats?.lastSyncedAt ?? null,
     },
   };
@@ -52,13 +73,14 @@ async function getRankedUsers({ department } = {}) {
       : undefined,
     include: {
       activityStats: true,
+      score: true,
     },
   });
 
   return users
     .map((user) => ({
       user,
-      score: toNumber(user.activityStats?.totalRatingScore),
+      score: toNumber(user.score?.totalScore ?? user.activityStats?.totalRatingScore),
       lastSyncedAt: user.activityStats?.lastSyncedAt?.getTime?.() || 0,
     }))
     .sort((a, b) => {

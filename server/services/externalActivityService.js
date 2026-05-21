@@ -2,6 +2,11 @@ const prisma = require('../config/prisma');
 const github = require('../crawlers/github');
 const solvedac = require('../crawlers/solvedac');
 const dreamhack = require('../crawlers/dreamhack');
+const {
+  calculateAndSaveUserScore,
+  calculateScoreFromStats,
+  getSavedUserScore,
+} = require('./scoreService');
 
 const PLATFORM_LABELS = {
   github: 'GitHub',
@@ -82,17 +87,6 @@ function normalizeExternalIds(ids = {}) {
   };
 }
 
-function calculateTotalRatingScore(stats) {
-  return Math.round(
-    toNumber(stats.githubCommitCount) * 1.2
-      + toNumber(stats.githubPrCount) * 5
-      + toNumber(stats.bojSolvedCount) * 2.5
-      + toNumber(stats.bojRating) * 0.35
-      + toNumber(stats.dreamhackScore) * 0.4
-      + toNumber(stats.dreamhackSolvedCount) * 3,
-  );
-}
-
 function summarizeGithubActivity(data, accountId) {
   const profile = data?.profile || {};
   const stats = data?.stats || {};
@@ -106,7 +100,7 @@ function summarizeGithubActivity(data, accountId) {
     avatarUrl: profile.avatar_url || null,
     githubCommitCount: toNumber(stats.totalCommits),
     githubPrCount: toNumber(stats.totalPRs),
-    publicRepos: toNumber(profile.public_repos),
+    githubPublicRepoCount: toNumber(profile.public_repos),
     followers: toNumber(profile.followers),
     following: toNumber(profile.following),
   };
@@ -259,18 +253,22 @@ function applySummaryToStats(stats, summary) {
   if (summary.platform === 'github') {
     stats.githubCommitCount = summary.githubCommitCount;
     stats.githubPrCount = summary.githubPrCount;
+    stats.githubPublicRepoCount = summary.githubPublicRepoCount;
   }
 
   if (summary.platform === 'boj') {
     stats.bojSolvedCount = summary.bojSolvedCount;
     stats.bojTierNumber = summary.bojTierNumber;
     stats.bojRating = summary.bojRating;
+    stats.bojRank = summary.bojRank;
   }
 
   if (summary.platform === 'dreamhack') {
     stats.dreamhackScore = summary.dreamhackScore;
     stats.dreamhackSolvedCount = summary.dreamhackSolvedCount;
     stats.dreamhackRank = summary.dreamhackRank;
+    stats.dreamhackContributionLevel = summary.dreamhackContributionLevel;
+    stats.dreamhackContributionRank = summary.dreamhackContributionRank;
   }
 }
 
@@ -281,17 +279,21 @@ async function upsertUserActivityStats(userId, summaries, syncedAt) {
   const mergedStats = {
     githubCommitCount: currentStats?.githubCommitCount ?? 0,
     githubPrCount: currentStats?.githubPrCount ?? 0,
+    githubPublicRepoCount: currentStats?.githubPublicRepoCount ?? 0,
     bojSolvedCount: currentStats?.bojSolvedCount ?? 0,
     bojTierNumber: currentStats?.bojTierNumber ?? null,
     bojRating: currentStats?.bojRating ?? null,
+    bojRank: currentStats?.bojRank ?? null,
     dreamhackScore: currentStats?.dreamhackScore ?? 0,
     dreamhackSolvedCount: currentStats?.dreamhackSolvedCount ?? 0,
     dreamhackRank: currentStats?.dreamhackRank ?? null,
+    dreamhackContributionLevel: currentStats?.dreamhackContributionLevel ?? 0,
+    dreamhackContributionRank: currentStats?.dreamhackContributionRank ?? null,
   };
 
   summaries.forEach((summary) => applySummaryToStats(mergedStats, summary));
 
-  mergedStats.totalRatingScore = calculateTotalRatingScore(mergedStats);
+  mergedStats.totalRatingScore = calculateScoreFromStats(mergedStats).totalScore;
   mergedStats.lastSyncedAt = syncedAt;
 
   return prisma.userActivityStats.upsert({
@@ -355,11 +357,17 @@ async function saveExternalActivitySync(userId, collection) {
   const ratingHistory = summaries.length > 0
     ? await upsertUserRatingHistory(userId, stats, syncedAt)
     : null;
+  const savedScore = stats
+    ? await calculateAndSaveUserScore(userId, stats, syncedAt)
+    : await getSavedUserScore(userId);
 
   return {
     snapshots,
     stats,
     ratingHistory: ratingHistory ? toRatingHistoryDto(ratingHistory) : null,
+    score: savedScore.score,
+    scoreSnapshot: savedScore.snapshot || null,
+    scoreHistory: savedScore.scoreHistory || [],
   };
 }
 
@@ -375,7 +383,7 @@ async function getUserRatingHistory(userId, { limit = 30 } = {}) {
 }
 
 async function getSavedExternalActivity(userId) {
-  const [stats, snapshots, ratingHistory] = await Promise.all([
+  const [stats, snapshots, ratingHistory, savedScore] = await Promise.all([
     prisma.userActivityStats.findUnique({ where: { userId } }),
     prisma.externalActivitySnapshot.findMany({
       where: { userId },
@@ -383,12 +391,15 @@ async function getSavedExternalActivity(userId) {
       take: 30,
     }),
     getUserRatingHistory(userId),
+    getSavedUserScore(userId),
   ]);
 
   return {
     stats,
     snapshots,
     ratingHistory,
+    score: savedScore.score,
+    scoreHistory: savedScore.scoreHistory,
   };
 }
 

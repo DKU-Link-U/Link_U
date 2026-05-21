@@ -24,7 +24,7 @@ export const mockRating = {
   dreamhackScore: 0,
   dreamhackSolvedCount: 0,
   totalRatingScore: 1200,
-  // calculateTotalRating(): githubCommit(40%) + baekjoon(35%) + programmers(25%)
+  // calculateTotalRating(): GitHub + BOJ + Dreamhack backend score formula
   history: [
     { month: 'Jan', score: 820 },
     { month: 'Feb', score: 900 },
@@ -45,11 +45,11 @@ export const mockRating = {
 export const mockFieldStats = {
   userId: 'user_001',
   algorithm: 80,
-  csKnowledge: 65,
+  security: 65,
+  implementation: 60,
   collaboration: 70,
   problemSolving: 85,
-  studyActivity: 60,
-  projectContrib: 75,
+  activity: 75,
 }
 
 // ─── StudyGroup ──────────────────────────────────────────────────────────────

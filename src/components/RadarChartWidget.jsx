@@ -2,11 +2,11 @@ import { useActivityStats } from '../store'
 
 const FIELDS = [
   { key: 'algorithm', label: 'Algorithm', color: 'bg-blue-500' },
-  { key: 'csKnowledge', label: 'CS Knowledge', color: 'bg-indigo-500' },
+  { key: 'security', label: 'Security', color: 'bg-indigo-500' },
+  { key: 'implementation', label: 'Implementation', color: 'bg-sky-500' },
   { key: 'collaboration', label: 'Collaboration', color: 'bg-emerald-500' },
   { key: 'problemSolving', label: 'Problem Solving', color: 'bg-amber-500' },
-  { key: 'studyActivity', label: 'Study Activity', color: 'bg-sky-500' },
-  { key: 'projectContrib', label: 'Project Contrib', color: 'bg-violet-500' },
+  { key: 'activity', label: 'Activity', color: 'bg-violet-500' },
 ]
 
 function getPoint(index, value, radius) {
