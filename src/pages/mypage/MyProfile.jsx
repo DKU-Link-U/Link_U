@@ -13,14 +13,23 @@ const DEPARTMENT_OPTIONS = [
   '기타',
 ]
 
+const YEAR_OPTIONS = [1, 2, 3, 4]
+
 function createFormState(user) {
   return {
     nickname: user?.nickname ?? '',
     department: user?.department ?? '',
+    year: user?.year ? String(user.year) : '',
     oneLiner: user?.oneLiner ?? '',
     techStack: user?.techStack ?? '',
     interestArea: user?.interestArea ?? '',
   }
+}
+
+function formatAffiliation({ university, department, year }) {
+  return [university ?? '단국대학교', department, year ? `${year}학년` : null]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export default function MyProfile() {
@@ -72,11 +81,11 @@ export default function MyProfile() {
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-gray-800">{form.nickname || currentUser?.name || 'Link-U 사용자'}</p>
           <p className="mt-1 text-xs text-gray-500">
-            {currentUser?.university ?? '단국대학교'}
-            {form.department ? ` · ${form.department}` : ''}
-          </p>
-          <p className="mt-1.5 text-[11px] leading-5 text-gray-400">
-            프로필 정보는 Link-U DB에 저장되며 GitHub 동기화로 덮어쓰지 않습니다.
+            {formatAffiliation({
+              university: currentUser?.university,
+              department: form.department,
+              year: form.year,
+            })}
           </p>
         </div>
       </div>
@@ -103,6 +112,22 @@ export default function MyProfile() {
             {DEPARTMENT_OPTIONS.map(department => (
               <option key={department} value={department}>
                 {department}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold text-gray-500">학년</label>
+          <select
+            name="year"
+            value={form.year}
+            onChange={handleChange}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+          >
+            <option value="">학년 선택</option>
+            {YEAR_OPTIONS.map(year => (
+              <option key={year} value={year}>
+                {year}학년
               </option>
             ))}
           </select>

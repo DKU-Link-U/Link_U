@@ -18,6 +18,8 @@ const PROFILE_FIELDS = [
   'profileImage',
 ];
 
+const YEAR_OPTIONS = new Set([1, 2, 3, 4]);
+
 const DEPARTMENT_OPTIONS = new Set([
   '소프트웨어학과',
   '컴퓨터공학과',
@@ -33,6 +35,19 @@ function normalizeOptionalString(value) {
   if (value === undefined) return undefined;
   const normalized = String(value || '').trim();
   return normalized || null;
+}
+
+function normalizeOptionalYear(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+
+  const normalized = Number(value);
+
+  if (!Number.isInteger(normalized)) {
+    return NaN;
+  }
+
+  return normalized;
 }
 
 function mapAccountLinks(user) {
@@ -83,10 +98,23 @@ async function updateMe(req, res) {
       }
     });
 
+    const year = normalizeOptionalYear(req.body?.year);
+
+    if (year !== undefined) {
+      data.year = year;
+    }
+
     if (data.department && !DEPARTMENT_OPTIONS.has(data.department)) {
       return res.status(400).json({
         success: false,
         message: '지원하지 않는 학과입니다.',
+      });
+    }
+
+    if (data.year !== undefined && data.year !== null && !YEAR_OPTIONS.has(data.year)) {
+      return res.status(400).json({
+        success: false,
+        message: '학년은 1~4학년 중에서 선택해주세요.',
       });
     }
 
