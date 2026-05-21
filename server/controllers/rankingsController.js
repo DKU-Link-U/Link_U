@@ -13,23 +13,107 @@ function getTier(score) {
   return 'Bronze';
 }
 
-function mapRankingUser(user, index) {
+function toDateKey(dateValue) {
+  if (!dateValue) return '';
+
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toISOString().slice(0, 10);
+}
+
+function mapRatingHistory(history = []) {
+  return [...history]
+    .sort((left, right) => {
+      const leftDate = left.recordedDate?.getTime?.() || 0;
+      const rightDate = right.recordedDate?.getTime?.() || 0;
+
+      return leftDate - rightDate;
+    })
+    .map((item) => {
+      const date = toDateKey(item.recordedDate);
+
+      return {
+        id: item.id,
+        date,
+        month: date.slice(5),
+        score: item.totalRatingScore,
+        totalRatingScore: item.totalRatingScore,
+        githubCommitCount: item.githubCommitCount,
+        githubPrCount: item.githubPrCount,
+        bojSolvedCount: item.bojSolvedCount,
+        bojTierNumber: item.bojTierNumber,
+        bojRating: item.bojRating,
+        dreamhackScore: item.dreamhackScore,
+        dreamhackSolvedCount: item.dreamhackSolvedCount,
+        dreamhackRank: item.dreamhackRank,
+        recordedAt: item.recordedAt,
+      };
+    });
+}
+
+function mapGithubCommitActivity(snapshot) {
+  const dailyCommits = snapshot?.summary?.dailyCommits ?? snapshot?.rawData?.stats?.dailyCommits;
+
+  if (!Array.isArray(dailyCommits)) return [];
+
+  return dailyCommits
+    .map((day) => ({
+      date: day.date,
+      github: toNumber(day.github ?? day.count),
+    }))
+    .filter((day) => day.date);
+}
+
+function getSyncedPlatforms(user) {
+  const stats = user.activityStats;
+
+  return {
+    github: Boolean(
+      user.githubId
+        || toNumber(stats?.githubCommitCount)
+        || toNumber(stats?.githubPrCount)
+        || toNumber(stats?.githubPublicRepoCount),
+    ),
+    baekjoon: Boolean(
+      user.bojId
+        || toNumber(stats?.bojSolvedCount)
+        || toNumber(stats?.bojTierNumber)
+        || toNumber(stats?.bojRating),
+    ),
+    dreamhack: Boolean(
+      user.dreamhackId
+        || toNumber(stats?.dreamhackScore)
+        || toNumber(stats?.dreamhackSolvedCount)
+        || toNumber(stats?.dreamhackContributionLevel),
+    ),
+  };
+}
+
+function mapRankingUser(user, index, { includeDetails = false } = {}) {
   const stats = user.activityStats;
   const scoreRecord = user.score;
   const score = toNumber(scoreRecord?.totalScore ?? stats?.totalRatingScore);
-
-  return {
+  const rankingUser = {
     userId: user.id,
     nickname: user.nickname || user.name || user.email.split('@')[0],
     name: user.name,
     email: user.email,
     department: user.department || '미지정',
+    year: user.year,
+    university: '단국대학교',
+    oneLiner: user.oneLiner,
+    techStack: user.techStack,
+    interestArea: user.interestArea,
+    profileImage: user.profileImage,
     score,
     tier: getTier(score),
     rank: index + 1,
     githubId: user.githubId,
     bojId: user.bojId,
     dreamhackId: user.dreamhackId,
+    syncedPlatforms: getSyncedPlatforms(user),
     fieldStats: scoreRecord?.fieldDisplayScores ?? {},
     scoreBreakdown: scoreRecord
       ? {
@@ -62,9 +146,19 @@ function mapRankingUser(user, index) {
       lastSyncedAt: stats?.lastSyncedAt ?? null,
     },
   };
+
+  if (!includeDetails) {
+    return rankingUser;
+  }
+
+  return {
+    ...rankingUser,
+    ratingHistory: mapRatingHistory(user.ratingHistory ?? []),
+    commitActivity: mapGithubCommitActivity(user.activitySnapshots?.[0]),
+  };
 }
 
-async function getRankedUsers({ department } = {}) {
+async function getRankedUsers({ department, includeDetails = false } = {}) {
   const users = await prisma.user.findMany({
     where: department
       ? {
@@ -74,6 +168,26 @@ async function getRankedUsers({ department } = {}) {
     include: {
       activityStats: true,
       score: true,
+      ...(includeDetails
+        ? {
+            activitySnapshots: {
+              where: {
+                platform: 'GITHUB',
+                status: 'SUCCESS',
+              },
+              orderBy: {
+                syncedAt: 'desc',
+              },
+              take: 1,
+            },
+            ratingHistory: {
+              orderBy: {
+                recordedDate: 'desc',
+              },
+              take: 30,
+            },
+          }
+        : {}),
     },
   });
 
@@ -88,7 +202,7 @@ async function getRankedUsers({ department } = {}) {
       if (b.lastSyncedAt !== a.lastSyncedAt) return b.lastSyncedAt - a.lastSyncedAt;
       return a.user.nickname?.localeCompare(b.user.nickname || '') || 0;
     })
-    .map(({ user }, index) => mapRankingUser(user, index));
+    .map(({ user }, index) => mapRankingUser(user, index, { includeDetails }));
 }
 
 function buildDepartmentRankings(users) {
@@ -149,7 +263,7 @@ async function listRankings(req, res) {
 
 async function getRankingUser(req, res) {
   try {
-    const users = await getRankedUsers();
+    const users = await getRankedUsers({ includeDetails: true });
     const user = users.find((item) => item.userId === req.params.userId);
 
     if (!user) {

@@ -19,8 +19,14 @@ function getPoint(index, value, radius) {
   }
 }
 
-export default function RadarChartWidget() {
-  const { fieldStats, syncedPlatforms } = useActivityStats()
+export default function RadarChartWidget({
+  fieldStats: fieldStatsOverride,
+  syncedPlatforms: syncedPlatformsOverride,
+  emptyMessage = '계정을 연동하고 활동 데이터를 동기화하면 분야별 점수가 표시됩니다.',
+} = {}) {
+  const activityStats = useActivityStats()
+  const fieldStats = fieldStatsOverride ?? activityStats.fieldStats
+  const syncedPlatforms = syncedPlatformsOverride ?? activityStats.syncedPlatforms
   const hasSyncedData = Object.values(syncedPlatforms ?? {}).some(Boolean)
   const values = FIELDS.map(field => ({
     ...field,
@@ -41,7 +47,7 @@ export default function RadarChartWidget() {
 
       {!hasSyncedData && (
         <div className="flex-1 min-h-[220px] flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center px-4">
-          <p className="text-xs text-gray-400">계정을 연동하고 활동 데이터를 동기화하면 분야별 점수가 표시됩니다.</p>
+          <p className="text-xs text-gray-400">{emptyMessage}</p>
         </div>
       )}
 
