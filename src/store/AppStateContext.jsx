@@ -4,7 +4,11 @@ import {
   applyStudy as applyStudyRequest,
   createProject as createProjectRequest,
   createStudy as createStudyRequest,
+  fetchMessages as fetchMessagesRequest,
+  fetchNotifications as fetchNotificationsRequest,
+  markAllNotificationsRead as markAllNotificationsReadRequest,
   markMessageRead as markMessageReadRequest,
+  markNotificationRead as markNotificationReadRequest,
   sendMessage as sendMessageRequest,
 } from '../api'
 import { clearStoredAccessToken, getStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
@@ -30,8 +34,10 @@ const ACTIONS = {
   SET_THEME: 'preferences/setTheme',
   MARK_NOTIFICATION_READ: 'notifications/markRead',
   MARK_ALL_NOTIFICATIONS_READ: 'notifications/markAllRead',
+  LOAD_NOTIFICATIONS_SUCCESS: 'notifications/loadSuccess',
   ADD_MESSAGE: 'messages/add',
   MARK_MESSAGE_READ: 'messages/markRead',
+  LOAD_MESSAGES_SUCCESS: 'messages/loadSuccess',
   LOAD_EXTERNAL_PROFILE_START: 'externalProfile/loadStart',
   LOAD_EXTERNAL_PROFILE_SUCCESS: 'externalProfile/loadSuccess',
   LOAD_EXTERNAL_PROFILE_ERROR: 'externalProfile/loadError',
@@ -426,6 +432,12 @@ function appStateReducer(state, action) {
         })),
       }
 
+    case ACTIONS.LOAD_NOTIFICATIONS_SUCCESS:
+      return {
+        ...state,
+        notifications: action.payload,
+      }
+
     case ACTIONS.ADD_MESSAGE:
       return {
         ...state,
@@ -443,6 +455,12 @@ function appStateReducer(state, action) {
             ? { ...message, isRead: true }
             : message,
         ),
+      }
+
+    case ACTIONS.LOAD_MESSAGES_SUCCESS:
+      return {
+        ...state,
+        messages: action.payload,
       }
 
     case ACTIONS.LOAD_EXTERNAL_PROFILE_START:
@@ -680,6 +698,34 @@ export function AppStateProvider({ children }) {
     }
   }, [state.auth.accessToken, state.auth.initialized])
 
+  useEffect(() => {
+    if (!state.auth.isAuthenticated || !state.auth.accessToken) return
+
+    let canceled = false
+
+    async function loadCommunicationData() {
+      try {
+        const [messages, notifications] = await Promise.all([
+          fetchMessagesRequest({}, { accessToken: state.auth.accessToken }),
+          fetchNotificationsRequest({}, { accessToken: state.auth.accessToken }),
+        ])
+
+        if (canceled) return
+
+        dispatch({ type: ACTIONS.LOAD_MESSAGES_SUCCESS, payload: messages })
+        dispatch({ type: ACTIONS.LOAD_NOTIFICATIONS_SUCCESS, payload: notifications })
+      } catch (error) {
+        console.warn('[Link_U] 메시지/알림 데이터를 불러오지 못했습니다.', error)
+      }
+    }
+
+    loadCommunicationData()
+
+    return () => {
+      canceled = true
+    }
+  }, [state.auth.isAuthenticated, state.auth.accessToken, state.auth.user?.id])
+
   const value = useMemo(() => {
     const currentUser = state.auth.user
     const accessToken = state.auth.accessToken
@@ -769,6 +815,14 @@ export function AppStateProvider({ children }) {
     const markMessageRead = async messageId => {
       await markMessageReadRequest(messageId, { accessToken })
       dispatch({ type: ACTIONS.MARK_MESSAGE_READ, payload: messageId })
+    }
+    const markNotificationRead = async notificationId => {
+      await markNotificationReadRequest(notificationId, { accessToken })
+      dispatch({ type: ACTIONS.MARK_NOTIFICATION_READ, payload: notificationId })
+    }
+    const markAllNotificationsRead = async () => {
+      const notifications = await markAllNotificationsReadRequest({ accessToken })
+      dispatch({ type: ACTIONS.LOAD_NOTIFICATIONS_SUCCESS, payload: notifications })
     }
     const addStudy = async form => {
       const createdStudy = await createStudyRequest(form, { currentUser, accessToken })
@@ -861,10 +915,8 @@ export function AppStateProvider({ children }) {
         dispatch({ type: ACTIONS.SET_AUTH_TOKEN, payload: accessTokenValue }),
       logout: () => dispatch({ type: ACTIONS.LOGOUT }),
       setTheme: theme => dispatch({ type: ACTIONS.SET_THEME, payload: theme }),
-      markNotificationRead: notificationId =>
-        dispatch({ type: ACTIONS.MARK_NOTIFICATION_READ, payload: notificationId }),
-      markAllNotificationsRead: () =>
-        dispatch({ type: ACTIONS.MARK_ALL_NOTIFICATIONS_READ }),
+      markNotificationRead,
+      markAllNotificationsRead,
       addMessage,
       markMessageRead,
       loadIntegratedUserData,

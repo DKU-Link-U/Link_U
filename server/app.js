@@ -2,6 +2,8 @@ const express = require('express');
 const passport = require('passport');
 const applicationRoutes = require('./routes/applicationRoutes');
 const authRoutes = require('./routes/authRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const rankingsRoutes = require('./routes/rankingsRoutes');
 const recruitmentRoutes = require('./routes/recruitmentRoutes');
@@ -22,6 +24,8 @@ app.get('/health', (req, res) => {
 
 app.use('/api/applications', applicationRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/rankings', rankingsRoutes);
 app.use('/api/recruitments', recruitmentRoutes);

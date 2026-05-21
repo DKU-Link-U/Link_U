@@ -1,6 +1,7 @@
 export * from './accountVerificationApi'
 export * from './httpClient'
 export * from './messageApi'
+export * from './notificationApi'
 export * from './projectApi'
 export * from './rankingApi'
 export * from './studyApi'
