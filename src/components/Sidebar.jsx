@@ -130,7 +130,12 @@ export default function Sidebar() {
   return (
     <aside className="w-56 min-h-screen flex flex-col bg-primary text-white shadow-xl flex-shrink-0">
       {/* 로고 */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
+      <NavLink
+        to={ROUTE_PATHS.home}
+        end
+        aria-label="홈으로 이동"
+        className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+      >
         <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold text-sm">
           L
         </div>
@@ -138,7 +143,7 @@ export default function Sidebar() {
           <span className="text-base font-bold tracking-wide">Link-U</span>
           <p className="text-[10px] text-white/40 leading-none mt-0.5">스터디 매칭 플랫폼</p>
         </div>
-      </div>
+      </NavLink>
 
       {/* 네비게이션 */}
       <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
