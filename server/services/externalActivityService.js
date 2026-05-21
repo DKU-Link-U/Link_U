@@ -101,6 +101,7 @@ function summarizeGithubActivity(data, accountId) {
     githubCommitCount: toNumber(stats.totalCommits),
     githubPrCount: toNumber(stats.totalPRs),
     githubPublicRepoCount: toNumber(profile.public_repos),
+    dailyCommits: Array.isArray(stats.dailyCommits) ? stats.dailyCommits : [],
     followers: toNumber(profile.followers),
     following: toNumber(profile.following),
   };

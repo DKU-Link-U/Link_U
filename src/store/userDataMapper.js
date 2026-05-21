@@ -37,8 +37,16 @@ function calculateDraftRatingScore(rating) {
   )
 }
 
-function buildSyncedActivity(data) {
-  const dailyCommits = data.github?.stats?.dailyCommits
+function getSavedGithubDailyCommits(saved) {
+  const githubSnapshot = (saved.snapshots ?? []).find(snapshot =>
+    snapshot.platform === 'GITHUB' && snapshot.status === 'SUCCESS',
+  )
+
+  return githubSnapshot?.summary?.dailyCommits ?? githubSnapshot?.rawData?.stats?.dailyCommits
+}
+
+function buildSyncedActivity(data, saved = {}) {
+  const dailyCommits = data.github?.stats?.dailyCommits ?? getSavedGithubDailyCommits(saved)
 
   if (!Array.isArray(dailyCommits)) return []
 
@@ -229,8 +237,8 @@ export function mapIntegratedUserData(data = {}, previousState, ids, saved = {})
     rating,
     activity: {
       fieldStats: saved.score?.fieldDisplayScores ?? buildFieldStats(rating),
-      commitActivity: hasRawActivity
-        ? buildSyncedActivity(data)
+      commitActivity: hasRawActivity || getSavedGithubDailyCommits(saved)
+        ? buildSyncedActivity(data, saved)
         : previousState.activity.commitActivity,
       syncedPlatforms: buildSyncedPlatforms(data, saved),
     },
