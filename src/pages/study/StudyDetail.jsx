@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockStudyGroups, mockUser, mockRating } from '../../models'
+import { mockStudyGroups, mockRating } from '../../models'
 
 export default function StudyDetail() {
   const { id } = useParams()
