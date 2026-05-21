@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../../store'
+import { ROUTE_PATHS, routeTo } from '../../routes/paths'
 
 const TYPE_META = {
   MESSAGE:        { label: '쪽지', color: 'bg-green-100 text-green-700', icon: '✉️' },
@@ -20,8 +22,32 @@ const TYPE_MAP = {
   '시스템': ['SYSTEM'],
 }
 
+function resolveNotificationPath(notification) {
+  const metadata = notification.metadata ?? {}
+  const recruitmentId = metadata.recruitmentId ?? metadata.studyId ?? metadata.projectId
+
+  if (notification.type === 'MESSAGE') {
+    return ROUTE_PATHS.messages
+  }
+
+  if (notification.type === 'STUDY_APPLICATION' || notification.type === 'STUDY_RESULT') {
+    return recruitmentId ? routeTo.studyDetail(recruitmentId) : ROUTE_PATHS.study.list
+  }
+
+  if (notification.type === 'PROJECT_APPLICATION' || notification.type === 'PROJECT_RESULT') {
+    return recruitmentId ? routeTo.projectDetail(recruitmentId) : ROUTE_PATHS.project.list
+  }
+
+  if (notification.type === 'RANKING_CHANGE') {
+    return ROUTE_PATHS.ranking
+  }
+
+  return ''
+}
+
 export default function NotificationsPage() {
   const [tab, setTab] = useState('전체')
+  const navigate = useNavigate()
   const {
     notifications,
     unreadNotificationCount,
@@ -32,6 +58,22 @@ export default function NotificationsPage() {
   const filtered = tab === '전체'
     ? notifications
     : notifications.filter(n => TYPE_MAP[tab]?.includes(n.type))
+
+  const handleNotificationClick = async notification => {
+    const path = resolveNotificationPath(notification)
+
+    try {
+      if (!notification.isRead) {
+        await markNotificationRead(notification.notificationId)
+      }
+    } catch (error) {
+      console.warn('[Link_U] Failed to mark notification as read.', error)
+    }
+
+    if (path) {
+      navigate(path)
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -73,7 +115,7 @@ export default function NotificationsPage() {
           return (
             <button
               key={n.notificationId}
-              onClick={() => markNotificationRead(n.notificationId)}
+              onClick={() => handleNotificationClick(n)}
               className={`w-full text-left bg-white rounded-2xl shadow-sm p-4 flex items-start gap-3 hover:shadow-md transition-shadow border-l-4 ${
                 n.isRead ? 'border-transparent opacity-70' : 'border-primary'
               }`}

@@ -169,6 +169,9 @@ export const mockNotifications = [
     type: 'STUDY_RESULT',
     content: '알고리즘 스터디 지원 결과: 승인되었습니다.',
     isRead: false,
+    metadata: {
+      recruitmentId: 'sg_001',
+    },
     createdAt: '2026-05-11 10:00',
   },
   {
@@ -177,6 +180,7 @@ export const mockNotifications = [
     type: 'RANKING_CHANGE',
     content: '랭킹이 15위 상승했습니다! 현재 전체 42위입니다.',
     isRead: false,
+    metadata: {},
     createdAt: '2026-05-10 00:00',
   },
   {
@@ -185,6 +189,9 @@ export const mockNotifications = [
     type: 'PROJECT_RESULT',
     content: '식단 알리미 앱 프로젝트 지원 결과: 검토 중입니다.',
     isRead: true,
+    metadata: {
+      recruitmentId: 'proj_001',
+    },
     createdAt: '2026-05-09 15:30',
   },
   {
@@ -193,6 +200,7 @@ export const mockNotifications = [
     type: 'SYSTEM',
     content: '시스템 점검 안내: 5월 15일 02:00 ~ 04:00',
     isRead: true,
+    metadata: {},
     createdAt: '2026-05-08 09:00',
   },
 ]
