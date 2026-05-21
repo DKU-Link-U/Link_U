@@ -35,6 +35,17 @@ export async function fetchCurrentUser({ accessToken } = {}) {
   return result.user
 }
 
+export async function updateCurrentUserProfile(profile, { accessToken } = {}) {
+  const result = await requestJson('/api/users/me', {
+    method: 'PATCH',
+    body: profile,
+    accessToken,
+    errorMessage: 'Failed to save profile.',
+  })
+
+  return result.user
+}
+
 export async function fetchIntegratedUserData({ githubId, bojId, dhId }, options = {}) {
   const authHeaders = getAuthHeaders(options.accessToken)
 
