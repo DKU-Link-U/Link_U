@@ -19,6 +19,7 @@ LINK_U는 GitHub 커밋 이력, 백준 풀이 현황 등 **이미 존재하는 �
 | **통합 역량 프로필** | GitHub·BOJ 데이터를 수집해 도메인별 강점을 레이더 차트로 시각화 |
 | **랭킹 시스템** | 비선형 가중치 알고리즘으로 통합 점수·티어 산출, 전교·학과별 순위 제공 |
 | **스터디 / 프로젝트 매칭** | 기술 스택·역할 조건 입력 시 역량 벡터 유사도 기반 후보 자동 추천 |
+| **AI 스터디 추천** | Gemini API 기반 추천을 제공하고, 응답 결과가 부족한 경우 로컬 점수 기반 추천으로 보완 |
 | **하드 필터링** | 모집 조건 미달 지원자를 시스템 단에서 자동 차단 |
 | **통합 잔디** | GitHub·BOJ·드림핵 3개 플랫폼 활동 내역을 하나의 캘린더 히트맵으로 표시 |
 | **네트워킹** | 랭킹 페이지에서 다른 유저 탐색 후 쪽지로 스터디·프로젝트 제안 |
@@ -30,7 +31,7 @@ LINK_U는 GitHub 커밋 이력, 백준 풀이 현황 등 **이미 존재하는 �
 ```
 ┌──────────────────────────────────────┐
 │           React SPA (Client)         │
-│     Chart.js · Dynamic Routing       │
+│ SVG/HTML Custom Charts · Routing     │
 └───────────────┬──────────────────────┘
                 │ REST API (JSON)
 ┌───────────────▼──────────────────────┐
@@ -61,14 +62,22 @@ Docker Compose로 Front · Back · DB 컨테이너화 → Linux 서버 배포
 
 | 구분 | 스택 |
 |------|------|
-| Frontend | React.js, Chart.js |
+| Frontend | React.js, SVG/HTML 기반 커스텀 차트 |
 | Backend | Node.js, Express.js |
 | Database | MongoDB / PostgreSQL |
 | 인증 | Google OAuth 2.0 |
-| 크롤링 | Axios, Cheerio, Puppeteer |
-| 외부 API | GitHub REST API |
+| 크롤링/외부 요청 | Axios 기반 외부 API 요청 및 응답 데이터 처리, Puppeteer, Cheerio(HTML 크롤링 확장용 의존성) |
+| 외부 API | GitHub REST API, Gemini API |
 | 스케줄러 | node-cron |
 | 배포 | Docker, Docker Compose |
+
+---
+
+## 🗄️ DB 모델 요약
+
+| 모델 | 주요 필드 |
+|------|------|
+| Recruitment | id, title, description, type, status, requiredSkills, requiredRoles, requiredRating, maxMembers, startDate, endDate, authorId |
 
 ---
 
@@ -127,6 +136,9 @@ GOOGLE_CLIENT_SECRET=
 
 # GitHub API
 GITHUB_TOKEN=
+
+# Gemini API
+GEMINI_API_KEY=
 
 # Database
 DB_HOST=
