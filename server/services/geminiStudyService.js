@@ -144,7 +144,7 @@ async function callGemini(prompt) {
   const apiKey = getGeminiApiKey();
 
   if (!apiKey) {
-    throw createHttpError(503, 'Gemini API 키가 설정되지 않았습니다. server/.env에 GEMINI_API_KEY를 추가해주세요.');
+    return [];
   }
 
   const model = getGeminiModel();
@@ -172,10 +172,8 @@ async function callGemini(prompt) {
 
     return parseGeminiJson(extractGeminiText(response));
   } catch (error) {
-    if (error.statusCode) throw error;
-
-    const message = error.response?.data?.error?.message || error.message;
-    throw createHttpError(502, `Gemini 추천 생성에 실패했습니다: ${message}`);
+    console.warn('[Gemini] 추천 생성 실패, 로컬 추천으로 대체합니다:', error.response?.data?.error?.message || error.message);
+    return [];
   }
 }
 
