@@ -1,17 +1,34 @@
 import { useState } from 'react'
-import { mockUser } from '../../models'
+import { useAppState } from '../../store'
+
+function createFormState(user) {
+  return {
+    nickname: user?.nickname ?? '',
+    department: user?.department ?? '',
+    oneLiner: user?.oneLiner ?? '',
+    techStack: user?.techStack ?? '',
+    interestArea: user?.interestArea ?? '',
+  }
+}
 
 export default function MyProfile() {
-  const [form, setForm] = useState({
-    nickname: mockUser.nickname,
-    department: mockUser.department,
-    oneLiner: mockUser.oneLiner,
-    techStack: mockUser.techStack,
-    interestArea: mockUser.interestArea,
-  })
+  const { currentUser, setCurrentUser } = useAppState()
+  const [form, setForm] = useState(() => createFormState(currentUser))
   const [saved, setSaved] = useState(false)
-  const handleChange = e => { setForm(f => ({ ...f, [e.target.name]: e.target.value })); setSaved(false) }
-  const handleSave = e => { e.preventDefault(); setSaved(true) }
+
+  const handleChange = e => {
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+    setSaved(false)
+  }
+
+  const handleSave = e => {
+    e.preventDefault()
+    setCurrentUser({
+      ...currentUser,
+      ...form,
+    })
+    setSaved(true)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -19,14 +36,18 @@ export default function MyProfile() {
 
       {/* 프로필 이미지 */}
       <div className="bg-white rounded-2xl shadow-md p-5 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 flex-shrink-0">
-          <svg className="w-9 h-9 text-primary/40" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-          </svg>
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 flex-shrink-0 overflow-hidden">
+          {currentUser?.profileImage ? (
+            <img src={currentUser.profileImage} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <svg className="w-9 h-9 text-primary/40" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+            </svg>
+          )}
         </div>
         <div>
           <p className="text-sm font-bold text-gray-800">{form.nickname}</p>
-          <p className="text-xs text-gray-500">{mockUser.university} · {form.department} {mockUser.year}학년</p>
+          <p className="text-xs text-gray-500">{currentUser?.university} · {form.department} {currentUser?.year}학년</p>
           <button className="mt-1.5 text-[10px] text-primary border border-primary/30 px-2.5 py-1 rounded-lg hover:bg-primary/5 transition-colors">
             프로필 사진 변경
           </button>
@@ -38,6 +59,11 @@ export default function MyProfile() {
         <div>
           <label className="text-xs font-semibold text-gray-500 mb-1.5 block">닉네임</label>
           <input name="nickname" value={form.nickname} onChange={handleChange}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">학과</label>
+          <input name="department" value={form.department} onChange={handleChange}
             className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
         </div>
         <div>
@@ -60,7 +86,7 @@ export default function MyProfile() {
         </div>
         <button type="submit"
           className="w-full bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-          {saved ? '✓ 저장 완료' : '프로필 저장'}
+          {saved ? '저장 완료' : '프로필 저장'}
         </button>
       </form>
     </div>

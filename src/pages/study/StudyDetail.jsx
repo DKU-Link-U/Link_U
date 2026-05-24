@@ -1,9 +1,11 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockStudyGroups, mockRating } from '../../models'
+import { mockStudyGroups } from '../../models'
+import { useAppState } from '../../store'
 
 export default function StudyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { rating } = useAppState()
   const sg = mockStudyGroups.find(g => g.groupId === id)
 
   if (!sg) {
@@ -15,7 +17,7 @@ export default function StudyDetail() {
     )
   }
 
-  const canApply = mockRating.totalRatingScore >= sg.requiredRating && sg.status === 'recruiting'
+  const canApply = rating.totalRatingScore >= sg.requiredRating && sg.status === 'recruiting'
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -63,7 +65,7 @@ export default function StudyDetail() {
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">내 점수</p>
-            <p className="font-semibold text-primary">{mockRating.totalRatingScore}점</p>
+            <p className="font-semibold text-primary">{rating.totalRatingScore}점</p>
           </div>
         </div>
 
@@ -80,7 +82,7 @@ export default function StudyDetail() {
           <div className="text-center py-3 bg-red-50 rounded-xl">
             <p className="text-xs text-red-500 font-medium">점수가 부족하여 지원할 수 없습니다.</p>
             <p className="text-xs text-red-400 mt-0.5">
-              필요: {sg.requiredRating}점 / 현재: {mockRating.totalRatingScore}점 (부족: {sg.requiredRating - mockRating.totalRatingScore}점)
+              필요: {sg.requiredRating}점 / 현재: {rating.totalRatingScore}점 (부족: {sg.requiredRating - rating.totalRatingScore}점)
             </p>
           </div>
         )}

@@ -50,3 +50,33 @@ export function useMessages() {
     markMessageRead,
   }
 }
+
+export function useExternalProfile() {
+  const {
+    externalProfile,
+    loadIntegratedUserData,
+    clearExternalProfileError,
+  } = useAppState()
+
+  return {
+    externalProfile,
+    loadIntegratedUserData,
+    clearExternalProfileError,
+  }
+}
+
+export function useAccountLinks() {
+  const {
+    accountLinks,
+    setAccountLink,
+    verifyAccountLink,
+    disconnectAccountLink,
+  } = useAppState()
+
+  return {
+    accountLinks,
+    setAccountLink,
+    verifyAccountLink,
+    disconnectAccountLink,
+  }
+}

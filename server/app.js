@@ -1,5 +1,6 @@
 const express = require('express');
 const userRoutes = require('./routes/userRoutes');
+const verificationRoutes = require('./routes/verificationRoutes');
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/user', userRoutes);
+app.use('/api/verify-account', verificationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
