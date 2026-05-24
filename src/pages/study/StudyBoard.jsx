@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { mockStudyGroups } from '../../models'
+import { ROUTE_PATHS, routeTo } from '../../routes/paths'
 
 const FILTERS = ['전체', '모집중', '마감']
 
@@ -20,7 +21,7 @@ export default function StudyBoard() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-800">스터디 게시판</h1>
         <Link
-          to="/study/create"
+          to={ROUTE_PATHS.study.create}
           className="flex items-center gap-1.5 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -77,7 +78,7 @@ export default function StudyBoard() {
         {filtered.map(sg => (
           <Link
             key={sg.groupId}
-            to={`/study/${sg.groupId}`}
+            to={routeTo.studyDetail(sg.groupId)}
             className="bg-white rounded-2xl shadow-md p-5 hover:shadow-lg transition-shadow"
           >
             <div className="flex items-start justify-between gap-3">

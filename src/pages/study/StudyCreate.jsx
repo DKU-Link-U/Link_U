@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ROUTE_PATHS } from '../../routes/paths'
 
 export default function StudyCreate() {
   const navigate = useNavigate()
@@ -12,7 +13,7 @@ export default function StudyCreate() {
   const handleSubmit = e => {
     e.preventDefault()
     alert('스터디 모집글이 등록되었습니다.')
-    navigate('/study')
+    navigate(ROUTE_PATHS.study.list)
   }
 
   return (

@@ -1,5 +1,6 @@
 import { mockStudyGroups } from '../../models'
 import { Link } from 'react-router-dom'
+import { ROUTE_PATHS, routeTo } from '../../routes/paths'
 
 // 내가 참여 중인 스터디 (mock: 처음 2개)
 const myStudies = mockStudyGroups.slice(0, 2)
@@ -11,7 +12,7 @@ export default function MyStudies() {
       {myStudies.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
           <p>참여 중인 스터디가 없습니다.</p>
-          <Link to="/study" className="text-primary text-xs underline mt-2 inline-block">스터디 찾아보기</Link>
+          <Link to={ROUTE_PATHS.study.list} className="text-primary text-xs underline mt-2 inline-block">스터디 찾아보기</Link>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -32,7 +33,7 @@ export default function MyStudies() {
               <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-50">
                 <span>리더: {sg.leaderName}</span>
                 <span>{sg.currentCount}/{sg.capacity}명</span>
-                <Link to={`/study/${sg.groupId}`} className="text-primary font-medium hover:underline">상세 보기</Link>
+                <Link to={routeTo.studyDetail(sg.groupId)} className="text-primary font-medium hover:underline">상세 보기</Link>
               </div>
             </div>
           ))}

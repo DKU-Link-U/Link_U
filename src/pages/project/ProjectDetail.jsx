@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { mockProjects } from '../../models'
+import { ROUTE_PATHS } from '../../routes/paths'
 import { useAppState } from '../../store'
 
 export default function ProjectDetail() {
@@ -12,7 +13,7 @@ export default function ProjectDetail() {
     return (
       <div className="text-center py-24 text-gray-400">
         <p className="text-sm">프로젝트를 찾을 수 없습니다.</p>
-        <Link to="/project" className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
+        <Link to={ROUTE_PATHS.project.list} className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
       </div>
     )
   }

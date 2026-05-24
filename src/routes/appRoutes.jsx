@@ -16,6 +16,7 @@ import MyStudies from '../pages/mypage/MyStudies'
 import MyProjects from '../pages/mypage/MyProjects'
 import Settings from '../pages/mypage/Settings'
 import MessagesPage from '../pages/messages/MessagesPage'
+import UserProfilePage from '../pages/users/UserProfilePage'
 import { DEFAULT_ROUTE, ROUTE_PATHS } from './paths'
 
 export const routeMeta = [
@@ -27,6 +28,7 @@ export const routeMeta = [
   { path: ROUTE_PATHS.project.list, title: '프로젝트 게시판', end: true },
   { path: ROUTE_PATHS.project.create, title: '프로젝트 모집 작성' },
   { path: ROUTE_PATHS.project.detail, title: '프로젝트 상세' },
+  { path: ROUTE_PATHS.users.profile, title: '사용자 프로필' },
   { path: ROUTE_PATHS.notifications, title: '알림 센터' },
   { path: ROUTE_PATHS.messages, title: '쪽지함' },
   { path: ROUTE_PATHS.mypage.root, title: '마이페이지', end: true },
@@ -47,6 +49,7 @@ export const appRoutes = [
   { path: ROUTE_PATHS.project.list, element: <ProjectBoard /> },
   { path: ROUTE_PATHS.project.create, element: <ProjectCreate /> },
   { path: ROUTE_PATHS.project.detail, element: <ProjectDetail /> },
+  { path: ROUTE_PATHS.users.profile, element: <UserProfilePage /> },
   { path: ROUTE_PATHS.notifications, element: <NotificationsPage /> },
   {
     path: ROUTE_PATHS.mypage.root,
