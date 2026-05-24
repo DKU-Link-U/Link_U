@@ -1,6 +1,6 @@
-import { mockRating, mockStudyGroups, mockProjects } from '../../models'
 import CommitGrass from '../../components/CommitGrass'
 import LineChartWidget from '../../components/LineChartWidget'
+import { useAppState } from '../../store'
 
 const COMPLETED_STUDIES = [
   { id: 1, title: 'Java 기초 스터디', period: '2025.09 ~ 2025.12', members: 5 },
@@ -12,6 +12,8 @@ const COMPLETED_PROJECTS = [
 ]
 
 export default function ActivityStats() {
+  const { rating } = useAppState()
+
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-base font-bold text-gray-800">내 활동 통계</h2>
@@ -19,9 +21,9 @@ export default function ActivityStats() {
       {/* 점수 요약 */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'GitHub Commits', value: mockRating.githubCommitCount, unit: '개' },
-          { label: '백준 티어', value: mockRating.baekjoonTier, unit: '' },
-          { label: '프로그래머스', value: mockRating.programmersLevel, unit: '' },
+          { label: 'GitHub Commits', value: rating.githubCommitCount, unit: '개' },
+          { label: '백준 티어', value: rating.baekjoonTier, unit: '' },
+          { label: 'Dreamhack', value: rating.dreamhackScore ?? 0, unit: '점' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl shadow-md p-4 text-center">
             <p className="text-[10px] text-gray-400 mb-1">{s.label}</p>

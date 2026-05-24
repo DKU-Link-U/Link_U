@@ -1,21 +1,25 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockProjects, mockUser, mockRating } from '../../models'
+import { ROUTE_PATHS } from '../../routes/paths'
+import { useAppState, useProjects } from '../../store'
 
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const p = mockProjects.find(x => x.projectId === id)
+  const { rating } = useAppState()
+  const { getProjectById, projectApplications, applyProject } = useProjects()
+  const p = getProjectById(id)
+  const application = projectApplications[id]
 
   if (!p) {
     return (
       <div className="text-center py-24 text-gray-400">
         <p className="text-sm">프로젝트를 찾을 수 없습니다.</p>
-        <Link to="/project" className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
+        <Link to={ROUTE_PATHS.project.list} className="text-primary text-xs underline mt-2 inline-block">목록으로</Link>
       </div>
     )
   }
 
-  const canApply = mockRating.totalRatingScore >= p.requiredRating && p.status === 'recruiting'
+  const canApply = rating.totalRatingScore >= p.requiredRating && p.status === 'recruiting' && !application
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -59,12 +63,19 @@ export default function ProjectDetail() {
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">내 점수</p>
-            <p className="font-semibold text-primary">{mockRating.totalRatingScore}점</p>
+            <p className="font-semibold text-primary">{rating.totalRatingScore}점</p>
           </div>
         </div>
 
-        {canApply ? (
-          <button className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">
+        {application ? (
+          <button disabled className="w-full bg-primary/10 text-primary py-3 rounded-xl font-semibold text-sm cursor-not-allowed">
+            신청 완료 · 검토 중
+          </button>
+        ) : canApply ? (
+          <button
+            onClick={() => applyProject(p.projectId)}
+            className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
             프로젝트 참여 신청
           </button>
         ) : p.status !== 'recruiting' ? (
@@ -74,7 +85,7 @@ export default function ProjectDetail() {
         ) : (
           <div className="text-center py-3 bg-red-50 rounded-xl">
             <p className="text-xs text-red-500 font-medium">점수가 부족합니다.</p>
-            <p className="text-xs text-red-400 mt-0.5">필요: {p.requiredRating}점 / 현재: {mockRating.totalRatingScore}점</p>
+            <p className="text-xs text-red-400 mt-0.5">필요: {p.requiredRating}점 / 현재: {rating.totalRatingScore}점</p>
           </div>
         )}
       </div>
