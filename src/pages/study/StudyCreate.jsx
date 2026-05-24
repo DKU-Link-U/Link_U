@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTE_PATHS } from '../../routes/paths'
+import { useStudies } from '../../store'
 
 export default function StudyCreate() {
   const navigate = useNavigate()
+  const { addStudy } = useStudies()
   const [form, setForm] = useState({
     title: '', description: '', techStack: '', capacity: 4, requiredRating: 800,
   })
@@ -12,6 +14,7 @@ export default function StudyCreate() {
 
   const handleSubmit = e => {
     e.preventDefault()
+    addStudy(form)
     alert('스터디 모집글이 등록되었습니다.')
     navigate(ROUTE_PATHS.study.list)
   }

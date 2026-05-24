@@ -1,19 +1,15 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { mockStudyGroups } from '../../models'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
+import { useStudies } from '../../store'
 
-const FILTERS = ['전체', '모집중', '마감']
+const FILTERS = [
+  { value: 'all', label: '전체' },
+  { value: 'recruiting', label: '모집중' },
+  { value: 'closed', label: '마감' },
+]
 
 export default function StudyBoard() {
-  const [filter, setFilter] = useState('전체')
-  const [keyword, setKeyword] = useState('')
-
-  const filtered = mockStudyGroups.filter(sg => {
-    const statusMatch = filter === '전체' || (filter === '모집중' ? sg.status === 'recruiting' : sg.status === 'closed')
-    const kwMatch = sg.title.includes(keyword) || sg.techStack.some(t => t.includes(keyword))
-    return statusMatch && kwMatch
-  })
+  const { filteredStudies, studyFilters, setStudyFilters } = useStudies()
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -38,8 +34,8 @@ export default function StudyBoard() {
             <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
           </svg>
           <input
-            value={keyword}
-            onChange={e => setKeyword(e.target.value)}
+            value={studyFilters.keyword}
+            onChange={e => setStudyFilters({ keyword: e.target.value })}
             placeholder="스터디명, 기술스택 검색"
             className="bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none flex-1"
           />
@@ -47,13 +43,13 @@ export default function StudyBoard() {
         <div className="flex gap-1">
           {FILTERS.map(f => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
+              key={f.value}
+              onClick={() => setStudyFilters({ status: f.value })}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                filter === f ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'
+                studyFilters.status === f.value ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'
               }`}
             >
-              {f}
+              {f.label}
             </button>
           ))}
         </div>
@@ -72,10 +68,10 @@ export default function StudyBoard() {
 
       {/* 스터디 목록 */}
       <div className="flex flex-col gap-3">
-        {filtered.length === 0 && (
+        {filteredStudies.length === 0 && (
           <div className="text-center py-16 text-gray-400 text-sm">검색 결과가 없습니다.</div>
         )}
-        {filtered.map(sg => (
+        {filteredStudies.map(sg => (
           <Link
             key={sg.groupId}
             to={routeTo.studyDetail(sg.groupId)}

@@ -1,10 +1,14 @@
-import { mockProjects } from '../../models'
 import { Link } from 'react-router-dom'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
-
-const myProjects = mockProjects.slice(0, 1)
+import { useCurrentUser, useProjects } from '../../store'
 
 export default function MyProjects() {
+  const currentUser = useCurrentUser()
+  const { projects, projectApplications } = useProjects()
+  const myProjects = projects.filter(project =>
+    project.leaderId === currentUser?.userId || projectApplications[project.projectId],
+  )
+
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-base font-bold text-gray-800">참여 중인 프로젝트</h2>

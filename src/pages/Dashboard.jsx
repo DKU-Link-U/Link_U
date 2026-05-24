@@ -3,8 +3,8 @@ import UserProfile from '../components/UserProfile'
 import RadarChartWidget from '../components/RadarChartWidget'
 import CommitGrass from '../components/CommitGrass'
 import LineChartWidget from '../components/LineChartWidget'
-import { mockStudyGroups, mockProjects, mockNotifications } from '../models'
 import { ROUTE_PATHS, routeTo } from '../routes/paths'
+import { useNotifications, useProjects, useStudies } from '../store'
 
 const ANNOUNCEMENTS = [
   { id: 1, title: '2026년 1학기 스터디 모집 기간 안내', date: '2026-05-10', isNew: true },
@@ -32,7 +32,9 @@ function StatusBadge({ status }) {
 }
 
 export default function Dashboard() {
-  const unreadCount = mockNotifications.filter(n => !n.isRead).length
+  const { notifications, unreadNotificationCount } = useNotifications()
+  const { studies } = useStudies()
+  const { projects } = useProjects()
 
   return (
     <div className="flex flex-col gap-5 max-w-screen-xl mx-auto">
@@ -58,7 +60,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow-md p-5">
           <SectionTitle title="스터디 목록" to={ROUTE_PATHS.study.list} />
           <div className="space-y-2.5">
-            {mockStudyGroups.slice(0, 3).map(sg => (
+            {studies.slice(0, 3).map(sg => (
               <Link
                 key={sg.groupId}
                 to={routeTo.studyDetail(sg.groupId)}
@@ -83,7 +85,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow-md p-5">
           <SectionTitle title="프로젝트 목록" to={ROUTE_PATHS.project.list} />
           <div className="space-y-2.5">
-            {mockProjects.map(p => (
+            {projects.slice(0, 3).map(p => (
               <Link
                 key={p.projectId}
                 to={routeTo.projectDetail(p.projectId)}
@@ -109,9 +111,9 @@ export default function Dashboard() {
           {/* 미확인 알림 요약 */}
           <div className="bg-white rounded-2xl shadow-md p-5">
             <SectionTitle title="알림" to={ROUTE_PATHS.notifications} />
-            {unreadCount > 0 ? (
+            {unreadNotificationCount > 0 ? (
               <div className="space-y-2">
-                {mockNotifications.filter(n => !n.isRead).map(n => (
+                {notifications.filter(n => !n.isRead).map(n => (
                   <div key={n.notificationId} className="flex items-start gap-2">
                     <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                     <p className="text-xs text-gray-700 leading-snug">{n.content}</p>

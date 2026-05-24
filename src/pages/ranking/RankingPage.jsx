@@ -1,8 +1,6 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { mockRankingList } from '../../models'
 import { ROUTE_PATHS, routeTo } from '../../routes/paths'
-import { useAppState } from '../../store'
+import { useCurrentUser, useRanking } from '../../store'
 
 const TABS = [
   { key: 'overall', label: '개인 전체 랭킹' },
@@ -34,10 +32,13 @@ function TierIcon({ tier }) {
 }
 
 export default function RankingPage() {
-  const [tab, setTab] = useState('overall')
-  const { currentUser } = useAppState()
-
-  const myEntry = mockRankingList.find(r => r.userId === currentUser?.userId)
+  const currentUser = useCurrentUser()
+  const {
+    rankingTab: tab,
+    setRankingTab,
+    visibleRankingUsers,
+    myRankingEntry: myEntry,
+  } = useRanking()
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -66,7 +67,7 @@ export default function RankingPage() {
         {TABS.map(t => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => setRankingTab(t.key)}
             className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-colors ${
               tab === t.key ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-800'
             }`}
@@ -91,10 +92,7 @@ export default function RankingPage() {
               </tr>
             </thead>
             <tbody>
-              {(tab === 'department'
-                ? mockRankingList.filter(r => r.department === currentUser?.department)
-                : mockRankingList
-              ).map((r, i) => (
+              {visibleRankingUsers.map((r, i) => (
                 <tr
                   key={r.userId}
                   className={`border-b border-gray-50 last:border-none transition-colors hover:bg-gray-50 ${

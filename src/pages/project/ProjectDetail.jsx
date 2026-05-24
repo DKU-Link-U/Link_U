@@ -1,13 +1,14 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { mockProjects } from '../../models'
 import { ROUTE_PATHS } from '../../routes/paths'
-import { useAppState } from '../../store'
+import { useAppState, useProjects } from '../../store'
 
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { rating } = useAppState()
-  const p = mockProjects.find(x => x.projectId === id)
+  const { getProjectById, projectApplications, applyProject } = useProjects()
+  const p = getProjectById(id)
+  const application = projectApplications[id]
 
   if (!p) {
     return (
@@ -18,7 +19,7 @@ export default function ProjectDetail() {
     )
   }
 
-  const canApply = rating.totalRatingScore >= p.requiredRating && p.status === 'recruiting'
+  const canApply = rating.totalRatingScore >= p.requiredRating && p.status === 'recruiting' && !application
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
@@ -66,8 +67,15 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        {canApply ? (
-          <button className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">
+        {application ? (
+          <button disabled className="w-full bg-primary/10 text-primary py-3 rounded-xl font-semibold text-sm cursor-not-allowed">
+            신청 완료 · 검토 중
+          </button>
+        ) : canApply ? (
+          <button
+            onClick={() => applyProject(p.projectId)}
+            className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
             프로젝트 참여 신청
           </button>
         ) : p.status !== 'recruiting' ? (
