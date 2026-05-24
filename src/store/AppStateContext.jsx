@@ -1,4 +1,12 @@
 import { useEffect, useMemo, useReducer } from 'react'
+import {
+  applyProject as applyProjectRequest,
+  applyStudy as applyStudyRequest,
+  createProject as createProjectRequest,
+  createStudy as createStudyRequest,
+  markMessageRead as markMessageReadRequest,
+  sendMessage as sendMessageRequest,
+} from '../api'
 import { fetchIntegratedUserData } from '../api/userApi'
 import {
   mockMessages,
@@ -235,69 +243,6 @@ function persistState(state) {
   }
 }
 
-function createStudy(currentUser, form) {
-  return {
-    groupId: `sg_${Date.now()}`,
-    leaderId: currentUser?.userId ?? 'guest',
-    leaderName: currentUser?.nickname ?? 'Guest',
-    title: form.title.trim(),
-    description: form.description.trim(),
-    requiredRating: Number(form.requiredRating) || 0,
-    capacity: Number(form.capacity) || 2,
-    currentCount: 1,
-    techStack: form.techStack
-      .split(',')
-      .map(item => item.trim())
-      .filter(Boolean),
-    applicantList: [],
-    status: 'recruiting',
-    createdAt: new Date().toISOString().slice(0, 10),
-  }
-}
-
-function createProject(currentUser, form) {
-  return {
-    projectId: `proj_${Date.now()}`,
-    leaderId: currentUser?.userId ?? 'guest',
-    leaderName: currentUser?.nickname ?? 'Guest',
-    title: form.title.trim(),
-    description: form.description.trim(),
-    requiredRating: Number(form.requiredRating) || 0,
-    capacity: Number(form.capacity) || 2,
-    currentCount: 1,
-    techStack: form.techStack
-      .split(',')
-      .map(item => item.trim())
-      .filter(Boolean),
-    applicantList: [],
-    status: 'recruiting',
-    createdAt: new Date().toISOString().slice(0, 10),
-  }
-}
-
-function createApplication(currentUser) {
-  return {
-    userId: currentUser?.userId ?? 'guest',
-    status: 'pending',
-    appliedAt: new Date().toISOString(),
-  }
-}
-
-function createMessage(currentUser, message) {
-  const sender = currentUser ?? { userId: 'guest', nickname: 'Guest' }
-
-  return {
-    messageId: `msg_${Date.now()}`,
-    senderId: sender.userId,
-    senderName: sender.nickname,
-    receiverId: message.receiverId ?? message.to,
-    receiverName: message.to,
-    content: message.content,
-    createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-    isRead: true,
-  }
-}
-
 function appStateReducer(state, action) {
   switch (action.type) {
     case ACTIONS.SET_CURRENT_USER:
@@ -350,7 +295,7 @@ function appStateReducer(state, action) {
       return {
         ...state,
         messages: [
-          createMessage(state.auth.user, action.payload),
+          action.payload,
           ...state.messages,
         ],
       }
@@ -480,7 +425,7 @@ function appStateReducer(state, action) {
         studies: {
           ...state.studies,
           items: [
-            createStudy(state.auth.user, action.payload),
+            action.payload,
             ...state.studies.items,
           ],
         },
@@ -493,7 +438,7 @@ function appStateReducer(state, action) {
           ...state.studies,
           applications: {
             ...state.studies.applications,
-            [action.payload]: createApplication(state.auth.user),
+            [action.payload.groupId]: action.payload.application,
           },
         },
       }
@@ -516,7 +461,7 @@ function appStateReducer(state, action) {
         projects: {
           ...state.projects,
           items: [
-            createProject(state.auth.user, action.payload),
+            action.payload,
             ...state.projects.items,
           ],
         },
@@ -529,7 +474,7 @@ function appStateReducer(state, action) {
           ...state.projects,
           applications: {
             ...state.projects.applications,
-            [action.payload]: createApplication(state.auth.user),
+            [action.payload.projectId]: action.payload.application,
           },
         },
       }
@@ -623,6 +568,48 @@ export function AppStateProvider({ children }) {
         throw error
       }
     }
+    const addMessage = async message => {
+      const createdMessage = await sendMessageRequest(message, { currentUser })
+
+      dispatch({ type: ACTIONS.ADD_MESSAGE, payload: createdMessage })
+      return createdMessage
+    }
+    const markMessageRead = async messageId => {
+      await markMessageReadRequest(messageId)
+      dispatch({ type: ACTIONS.MARK_MESSAGE_READ, payload: messageId })
+    }
+    const addStudy = async form => {
+      const createdStudy = await createStudyRequest(form, { currentUser })
+
+      dispatch({ type: ACTIONS.ADD_STUDY, payload: createdStudy })
+      return createdStudy
+    }
+    const applyStudy = async groupId => {
+      const application = await applyStudyRequest(groupId, { currentUser })
+
+      dispatch({
+        type: ACTIONS.APPLY_STUDY,
+        payload: { groupId, application },
+      })
+
+      return application
+    }
+    const addProject = async form => {
+      const createdProject = await createProjectRequest(form, { currentUser })
+
+      dispatch({ type: ACTIONS.ADD_PROJECT, payload: createdProject })
+      return createdProject
+    }
+    const applyProject = async projectId => {
+      const application = await applyProjectRequest(projectId, { currentUser })
+
+      dispatch({
+        type: ACTIONS.APPLY_PROJECT,
+        payload: { projectId, application },
+      })
+
+      return application
+    }
 
     return {
       state,
@@ -658,9 +645,8 @@ export function AppStateProvider({ children }) {
         dispatch({ type: ACTIONS.MARK_NOTIFICATION_READ, payload: notificationId }),
       markAllNotificationsRead: () =>
         dispatch({ type: ACTIONS.MARK_ALL_NOTIFICATIONS_READ }),
-      addMessage: message => dispatch({ type: ACTIONS.ADD_MESSAGE, payload: message }),
-      markMessageRead: messageId =>
-        dispatch({ type: ACTIONS.MARK_MESSAGE_READ, payload: messageId }),
+      addMessage,
+      markMessageRead,
       loadIntegratedUserData,
       clearExternalProfileError: () =>
         dispatch({ type: ACTIONS.CLEAR_EXTERNAL_PROFILE_ERROR }),
@@ -678,12 +664,12 @@ export function AppStateProvider({ children }) {
         dispatch({ type: ACTIONS.DISCONNECT_ACCOUNT_LINK, payload: platform }),
       setStudyFilters: filters =>
         dispatch({ type: ACTIONS.SET_STUDY_FILTERS, payload: filters }),
-      addStudy: form => dispatch({ type: ACTIONS.ADD_STUDY, payload: form }),
-      applyStudy: groupId => dispatch({ type: ACTIONS.APPLY_STUDY, payload: groupId }),
+      addStudy,
+      applyStudy,
       setProjectFilters: filters =>
         dispatch({ type: ACTIONS.SET_PROJECT_FILTERS, payload: filters }),
-      addProject: form => dispatch({ type: ACTIONS.ADD_PROJECT, payload: form }),
-      applyProject: projectId => dispatch({ type: ACTIONS.APPLY_PROJECT, payload: projectId }),
+      addProject,
+      applyProject,
       setRankingTab: tab => dispatch({ type: ACTIONS.SET_RANKING_TAB, payload: tab }),
     }
   }, [state])

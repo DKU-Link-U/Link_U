@@ -12,9 +12,9 @@ export default function StudyCreate() {
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault()
-    addStudy(form)
+    await addStudy(form)
     alert('스터디 모집글이 등록되었습니다.')
     navigate(ROUTE_PATHS.study.list)
   }
