@@ -3,6 +3,7 @@ const { getIntegratedUserData } = require('../controllers/userController');
 
 const router = express.Router();
 
+router.get('/', getIntegratedUserData);
 router.get('/:githubId/:bojId/:dhId', getIntegratedUserData);
 
 module.exports = router;
