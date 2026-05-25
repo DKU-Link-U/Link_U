@@ -1,4 +1,5 @@
 const recruitmentService = require('./recruitmentService');
+const prisma = require('../config/prisma');
 
 function toCommunityStatus(status) {
   return status === 'OPEN' ? 'recruiting' : 'closed';
@@ -53,6 +54,25 @@ function toCommunityItem(recruitment) {
   };
 }
 
+function createHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.publicMessage = message;
+  return error;
+}
+
+function toApplicationItem(application) {
+  return {
+    id: application.id,
+    userId: application.applicantId,
+    applicantId: application.applicantId,
+    recruitmentId: application.recruitmentId,
+    status: application.status.toLowerCase(),
+    message: application.message,
+    appliedAt: application.createdAt.toISOString(),
+  };
+}
+
 async function createCommunityRecruitment(type, authorId, body) {
   const recruitment = await recruitmentService.createRecruitment(authorId, toRecruitmentPayload(type, body));
   return toCommunityItem(recruitment);
@@ -81,7 +101,47 @@ async function getCommunityRecruitmentById(type, id) {
   return toCommunityItem(recruitment);
 }
 
+async function applyCommunityRecruitment(type, recruitmentId, applicantId, body = {}) {
+  const recruitment = await recruitmentService.getRecruitmentById(recruitmentId);
+
+  if (recruitment.type !== type) {
+    throw createHttpError(404, '모집글을 찾을 수 없습니다.');
+  }
+
+  if (recruitment.status !== 'OPEN') {
+    throw createHttpError(400, '마감된 모집글에는 지원할 수 없습니다.');
+  }
+
+  if (recruitment.authorId === applicantId) {
+    throw createHttpError(400, '자신이 작성한 모집글에는 지원할 수 없습니다.');
+  }
+
+  const existingApplication = await prisma.application.findUnique({
+    where: {
+      recruitmentId_applicantId: {
+        recruitmentId,
+        applicantId,
+      },
+    },
+  });
+
+  if (existingApplication) {
+    throw createHttpError(409, '이미 지원한 모집글입니다.');
+  }
+
+  const application = await prisma.application.create({
+    data: {
+      recruitmentId,
+      applicantId,
+      message: body.message || null,
+    },
+  });
+
+  return toApplicationItem(application);
+}
+
 module.exports = {
+  applyCommunityRecruitment,
   createCommunityRecruitment,
   getCommunityRecruitmentById,
   getCommunityRecruitments,

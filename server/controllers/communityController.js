@@ -48,6 +48,19 @@ function createCommunityController(type) {
         handleError(res, error, '모집글 조회에 실패했습니다.');
       }
     },
+
+    async apply(req, res) {
+      try {
+        const application = await communityService.applyCommunityRecruitment(type, req.params.id, req.user.id, req.body);
+
+        res.status(201).json({
+          success: true,
+          data: application,
+        });
+      } catch (error) {
+        handleError(res, error, '지원 신청에 실패했습니다.');
+      }
+    },
   };
 }
 
