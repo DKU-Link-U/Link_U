@@ -1,5 +1,6 @@
 const express = require('express');
 const passport = require('passport');
+const applicationRoutes = require('./routes/applicationRoutes');
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const recruitmentRoutes = require('./routes/recruitmentRoutes');
@@ -18,6 +19,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Link_U Backend Server is running' });
 });
 
+app.use('/api/applications', applicationRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/recruitments', recruitmentRoutes);
