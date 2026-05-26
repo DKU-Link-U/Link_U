@@ -1,5 +1,6 @@
 import CommitGrass from '../../components/CommitGrass'
 import LineChartWidget from '../../components/LineChartWidget'
+import RadarChartWidget from '../../components/RadarChartWidget'
 import { useAppState } from '../../store'
 
 const COMPLETED_STUDIES = [
@@ -32,10 +33,11 @@ export default function ActivityStats() {
         ))}
       </div>
 
-      {/* 활동 잔디 */}
-      <CommitGrass />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <RadarChartWidget />
+        <CommitGrass />
+      </div>
 
-      {/* 랭킹 추이 */}
       <LineChartWidget />
 
       {/* 종료된 스터디 */}

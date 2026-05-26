@@ -43,9 +43,9 @@ export default function Dashboard() {
       <UserProfile />
 
       {/* ── 중단: RadarChart + CommitGrass ── */}
-      <div className="grid grid-cols-5 gap-5" style={{ minHeight: '300px' }}>
-        <div className="col-span-2"><RadarChartWidget /></div>
-        <div className="col-span-3"><CommitGrass /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5" style={{ minHeight: '300px' }}>
+        <div className="lg:col-span-2"><RadarChartWidget /></div>
+        <div className="lg:col-span-3"><CommitGrass /></div>
       </div>
 
       {/* ── 랭킹 추이 ── */}
@@ -54,7 +54,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── 하단 3열 섹션 ── */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* 스터디 목록 미리보기 */}
         <div className="bg-white rounded-2xl shadow-md p-5">

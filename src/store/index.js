@@ -4,6 +4,7 @@ export {
 
 export {
   useAppState,
+  useActivityStats,
   useAccountLinks,
   useCurrentUser,
   useExternalProfile,
