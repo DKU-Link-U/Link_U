@@ -20,7 +20,8 @@ function getPoint(index, value, radius) {
 }
 
 export default function RadarChartWidget() {
-  const { fieldStats } = useActivityStats()
+  const { fieldStats, syncedPlatforms } = useActivityStats()
+  const hasSyncedData = Object.values(syncedPlatforms ?? {}).some(Boolean)
   const values = FIELDS.map(field => ({
     ...field,
     value: Number(fieldStats[field.key] ?? 0),
@@ -35,71 +36,79 @@ export default function RadarChartWidget() {
     <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-700">Field-specific Stats</h3>
-        <span className="text-xs font-bold text-primary">{average} avg</span>
+        <span className="text-xs font-bold text-primary">{hasSyncedData ? `${average} avg` : '연동 필요'}</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[190px_1fr] gap-4 flex-1">
-        <div className="relative flex items-center justify-center min-h-[190px]">
-          <svg className="w-[190px] h-[190px]" viewBox="0 0 200 200" role="img" aria-label="Field-specific stats radar chart">
-            {[25, 50, 75, 100].map(level => {
-              const points = FIELDS
-                .map((_, index) => getPoint(index, level, 76))
-                .map(point => `${point.x},${point.y}`)
-                .join(' ')
-
-              return (
-                <polygon
-                  key={level}
-                  points={points}
-                  fill="none"
-                  stroke="#dbeafe"
-                  strokeWidth="1"
-                />
-              )
-            })}
-            {FIELDS.map((_, index) => {
-              const point = getPoint(index, 100, 76)
-
-              return (
-                <line
-                  key={index}
-                  x1="100"
-                  y1="100"
-                  x2={point.x}
-                  y2={point.y}
-                  stroke="#e0e7ff"
-                  strokeWidth="1"
-                />
-              )
-            })}
-            <polygon points={polygon} fill="rgba(37, 99, 235, 0.18)" stroke="#2563eb" strokeWidth="2" />
-            {values.map((field, index) => {
-              const point = getPoint(index, field.value, 76)
-
-              return (
-                <circle key={field.key} cx={point.x} cy={point.y} r="3.5" fill="#2563eb" />
-              )
-            })}
-          </svg>
+      {!hasSyncedData && (
+        <div className="flex-1 min-h-[220px] flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center px-4">
+          <p className="text-xs text-gray-400">계정을 연동하고 활동 데이터를 동기화하면 분야별 점수가 표시됩니다.</p>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 gap-2 content-center">
-          {values.map(field => (
-            <div key={field.key} className="grid grid-cols-[1fr_auto] gap-3 items-center">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`w-2 h-2 rounded-full ${field.color}`} />
-                  <span className="text-[11px] text-gray-600 truncate">{field.label}</span>
+      {hasSyncedData && (
+        <div className="grid grid-cols-1 lg:grid-cols-[190px_1fr] gap-4 flex-1">
+          <div className="relative flex items-center justify-center min-h-[190px]">
+            <svg className="w-[190px] h-[190px]" viewBox="0 0 200 200" role="img" aria-label="Field-specific stats radar chart">
+              {[25, 50, 75, 100].map(level => {
+                const points = FIELDS
+                  .map((_, index) => getPoint(index, level, 76))
+                  .map(point => `${point.x},${point.y}`)
+                  .join(' ')
+
+                return (
+                  <polygon
+                    key={level}
+                    points={points}
+                    fill="none"
+                    stroke="#dbeafe"
+                    strokeWidth="1"
+                  />
+                )
+              })}
+              {FIELDS.map((_, index) => {
+                const point = getPoint(index, 100, 76)
+
+                return (
+                  <line
+                    key={index}
+                    x1="100"
+                    y1="100"
+                    x2={point.x}
+                    y2={point.y}
+                    stroke="#e0e7ff"
+                    strokeWidth="1"
+                  />
+                )
+              })}
+              <polygon points={polygon} fill="rgba(37, 99, 235, 0.18)" stroke="#2563eb" strokeWidth="2" />
+              {values.map((field, index) => {
+                const point = getPoint(index, field.value, 76)
+
+                return (
+                  <circle key={field.key} cx={point.x} cy={point.y} r="3.5" fill="#2563eb" />
+                )
+              })}
+            </svg>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 content-center">
+            {values.map(field => (
+              <div key={field.key} className="grid grid-cols-[1fr_auto] gap-3 items-center">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${field.color}`} />
+                    <span className="text-[11px] text-gray-600 truncate">{field.label}</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${field.color}`} style={{ width: `${field.value}%` }} />
+                  </div>
                 </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${field.color}`} style={{ width: `${field.value}%` }} />
-                </div>
+                <span className="text-xs font-bold text-gray-800 tabular-nums">{field.value}</span>
               </div>
-              <span className="text-xs font-bold text-gray-800 tabular-nums">{field.value}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
