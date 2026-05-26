@@ -149,3 +149,21 @@ export function useRanking() {
     getRankingUserById: userId => rankingUsers.find(user => user.userId === userId),
   }
 }
+
+export function useActivityStats() {
+  const {
+    rating,
+    fieldStats,
+    commitActivity,
+    syncedPlatforms,
+    rankingHistory,
+  } = useAppState()
+
+  return {
+    rating,
+    fieldStats,
+    commitActivity,
+    syncedPlatforms,
+    rankingHistory,
+  }
+}

@@ -19,9 +19,18 @@ class DreamhackClient {
    */
   async getUserStats(nickname) {
     try {
+      const normalizedNickname = String(nickname || '').trim();
+
+      if (normalizedNickname.includes('@')) {
+        const error = new Error('Dreamhack은 이메일이 아니라 공개 닉네임을 입력해야 합니다.');
+        error.statusCode = 400;
+        error.publicMessage = error.message;
+        throw error;
+      }
+
       const response = await axios.get(this.baseUrl, {
         params: {
-          keyword: nickname,
+          keyword: normalizedNickname,
           section: 'users',
           users_offset: 0,
           users_limit: 5
@@ -29,20 +38,30 @@ class DreamhackClient {
         headers: this.headers
       });
 
-      const results = response.data.users.results;
+      const results = response.data?.users?.results || [];
       // 닉네임이 정확히 일치하는 유저 찾기
-      const user = results.find(u => u.nickname.toLowerCase() === nickname.toLowerCase());
+      const user = results.find(u => u.nickname.toLowerCase() === normalizedNickname.toLowerCase());
 
       if (!user) {
-        throw new Error(`유저를 찾을 수 없습니다: ${nickname}`);
+        const error = new Error(`Dreamhack 유저를 찾을 수 없습니다: ${normalizedNickname}`);
+        error.statusCode = 404;
+        error.publicMessage = 'Dreamhack 유저를 찾을 수 없습니다. 이메일이 아니라 공개 닉네임을 입력했는지 확인해주세요.';
+        throw error;
       }
 
       const wargame = user.wargame || {};
       const contrib = user.contributions || {};
+      const verificationText = [
+        user.introduction,
+        user.representative,
+        user.emblem_representative,
+      ].filter(Boolean);
 
       return {
         id: user.id,
         nickname: user.nickname,
+        introduction: user.introduction || '',
+        verificationText,
         wargame: {
           rank: wargame.rank || 0,
           score: wargame.score || 0,

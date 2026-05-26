@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum RecruitmentType {
+  STUDY
+  PROJECT
+}
+
+enum RecruitmentStatus {
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELED
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  name        String?
+  nickname    String?
+  department  String?
+  studentId   String?
+  githubId    String?
+  bojId       String?
+  dreamhackId String?
+  role        UserRole @default(STUDENT)
+
+  recruitments Recruitment[] @relation("RecruitmentAuthor")
+  applications Application[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Recruitment {
+  id             String            @id @default(uuid())
+  title          String
+  description    String
+  type           RecruitmentType
+  status         RecruitmentStatus @default(OPEN)
+  requiredSkills String[]          @default([])
+  requiredRoles  String[]          @default([])
+  maxMembers     Int?
+  startDate      DateTime?
+  endDate        DateTime?
+
+  authorId String
+  author   User   @relation("RecruitmentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  applications Application[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, status])
+  @@index([authorId])
+}
+
+model Application {
+  id      String            @id @default(uuid())
+  message String?
+  status  ApplicationStatus @default(PENDING)
+
+  recruitmentId String
+  applicantId   String
+
+  recruitment Recruitment @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  applicant   User        @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([recruitmentId, applicantId])
+  @@index([applicantId])
+}
