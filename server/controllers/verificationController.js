@@ -52,7 +52,8 @@ async function verifyExternalAccount(req, res) {
 
   try {
     const profile = await loader(accountId.trim());
-    const verified = containsToken(profile, token.trim());
+    const verificationTarget = profile.verificationText || profile;
+    const verified = containsToken(verificationTarget, token.trim());
 
     return res.json({
       success: true,
@@ -67,13 +68,13 @@ async function verifyExternalAccount(req, res) {
   } catch (error) {
     console.error(`[Verify:${platform}] 계정 소유 확인 실패:`, error.message);
 
-    return res.status(502).json({
+    return res.status(error.statusCode || 502).json({
       success: false,
       verified: false,
       platform,
       platformName: PLATFORM_LABELS[platform],
       accountId,
-      message: '계정 소유 확인 중 외부 API 조회에 실패했습니다.',
+      message: error.publicMessage || '계정 소유 확인 중 외부 API 조회에 실패했습니다.',
       error: error.message,
     });
   }
