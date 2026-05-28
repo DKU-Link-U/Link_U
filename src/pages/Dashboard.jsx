@@ -24,20 +24,6 @@ function SectionTitle({ title, to, linkLabel = '전체보기' }) {
   )
 }
 
-function TierBadge({ tier }) {
-  const colors = {
-    Diamond: 'bg-sky-100 text-sky-600',
-    Platinum: 'bg-teal-100 text-teal-600',
-    Gold: 'bg-yellow-100 text-yellow-700',
-    Silver: 'bg-gray-100 text-gray-600',
-  }
-  return (
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${colors[tier] ?? 'bg-gray-100 text-gray-500'}`}>
-      {tier}
-    </span>
-  )
-}
-
 function StatusBadge({ status }) {
   return status === 'recruiting'
     ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">모집중</span>
