@@ -1,174 +1,114 @@
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend,
-} from 'chart.js'
-import { Radar } from 'react-chartjs-2'
+import { useActivityStats } from '../store'
 
-ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
-
-// ── Mock 데이터 ──────────────────────────────────────────────────────────────
-const LABELS = [
-  'Algorithm',
-  'CS Knowledge',
-  'Collaboration',
-  'Problem\nSolving',
-  'Study\nActivity',
-  'Project\nContrib',
+const FIELDS = [
+  { key: 'algorithm', label: 'Algorithm', color: 'bg-blue-500' },
+  { key: 'csKnowledge', label: 'CS Knowledge', color: 'bg-indigo-500' },
+  { key: 'collaboration', label: 'Collaboration', color: 'bg-emerald-500' },
+  { key: 'problemSolving', label: 'Problem Solving', color: 'bg-amber-500' },
+  { key: 'studyActivity', label: 'Study Activity', color: 'bg-sky-500' },
+  { key: 'projectContrib', label: 'Project Contrib', color: 'bg-violet-500' },
 ]
 
-const MY_SCORES    = [82, 68, 74, 88, 62, 76]
-const AVG_SCORES   = [60, 60, 60, 60, 60, 60]   // 평균선 (reference)
+function getPoint(index, value, radius) {
+  const angle = (Math.PI * 2 * index) / FIELDS.length - Math.PI / 2
+  const distance = radius * (value / 100)
 
-// ── 색상 상수 ────────────────────────────────────────────────────────────────
-const PRIMARY      = '#1E3A5F'
-const PRIMARY_MID  = 'rgba(30, 58, 95, 0.35)'
-const GRID_COLOR   = 'rgba(30, 58, 95, 0.08)'
-const TICK_COLOR   = 'rgba(30, 58, 95, 0.45)'
-
-// ── Chart.js 데이터 ──────────────────────────────────────────────────────────
-const data = {
-  labels: LABELS,
-  datasets: [
-    {
-      label: 'My Stats',
-      data: MY_SCORES,
-      backgroundColor: PRIMARY_MID,
-      borderColor: PRIMARY,
-      borderWidth: 2.5,
-      pointBackgroundColor: PRIMARY,
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      pointHoverBackgroundColor: PRIMARY,
-      pointHoverBorderColor: '#fff',
-      fill: true,
-    },
-    {
-      label: 'Average',
-      data: AVG_SCORES,
-      backgroundColor: 'transparent',
-      borderColor: 'rgba(156, 163, 175, 0.5)',
-      borderWidth: 1.5,
-      borderDash: [5, 4],
-      pointRadius: 0,
-      pointHoverRadius: 0,
-      fill: false,
-    },
-  ],
+  return {
+    x: 100 + Math.cos(angle) * distance,
+    y: 100 + Math.sin(angle) * distance,
+  }
 }
 
-// ── Chart.js 옵션 ────────────────────────────────────────────────────────────
-const options = {
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: {
-    duration: 900,
-    easing: 'easeInOutQuart',
-  },
-  scales: {
-    r: {
-      min: 0,
-      max: 100,
-      ticks: {
-        stepSize: 25,
-        display: false,            // 숫자 눈금 숨김 → 깔끔
-        backdropColor: 'transparent',
-      },
-      grid: {
-        color: GRID_COLOR,
-        lineWidth: 1,
-      },
-      angleLines: {
-        color: GRID_COLOR,
-        lineWidth: 1,
-      },
-      pointLabels: {
-        color: TICK_COLOR,
-        font: {
-          size: 11,
-          family: "'Inter', 'Noto Sans KR', sans-serif",
-          weight: '600',
-        },
-        padding: 8,
-      },
-    },
-  },
-  plugins: {
-    legend: {
-      position: 'bottom',
-      labels: {
-        boxWidth: 10,
-        boxHeight: 10,
-        borderRadius: 3,
-        useBorderRadius: true,
-        color: '#6B7280',
-        font: { size: 11, family: "'Inter', sans-serif" },
-        padding: 16,
-      },
-    },
-    tooltip: {
-      backgroundColor: 'rgba(15, 23, 42, 0.85)',
-      titleColor: '#F1F5F9',
-      bodyColor: '#CBD5E1',
-      borderColor: 'rgba(255,255,255,0.1)',
-      borderWidth: 1,
-      padding: 10,
-      cornerRadius: 10,
-      callbacks: {
-        label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}점`,
-      },
-    },
-  },
-}
-
-// ── 점수별 색상 배지 ─────────────────────────────────────────────────────────
-function ScorePill({ label, value }) {
-  const color =
-    value >= 80 ? 'bg-blue-100 text-blue-700' :
-    value >= 60 ? 'bg-indigo-50 text-indigo-600' :
-                  'bg-gray-100 text-gray-500'
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}`}>
-      {label.replace('\n', ' ')} <span className="opacity-70">{value}</span>
-    </span>
-  )
-}
-
-// ── 컴포넌트 ─────────────────────────────────────────────────────────────────
 export default function RadarChartWidget() {
-  const total = Math.round(MY_SCORES.reduce((a, b) => a + b, 0) / MY_SCORES.length)
+  const { fieldStats, syncedPlatforms } = useActivityStats()
+  const hasSyncedData = Object.values(syncedPlatforms ?? {}).some(Boolean)
+  const values = FIELDS.map(field => ({
+    ...field,
+    value: Number(fieldStats[field.key] ?? 0),
+  }))
+  const average = Math.round(values.reduce((sum, field) => sum + field.value, 0) / values.length)
+  const polygon = values
+    .map((field, index) => getPoint(index, field.value, 76))
+    .map(point => `${point.x},${point.y}`)
+    .join(' ')
 
   return (
-    <div className="bg-white rounded-2xl shadow-md p-5 h-full flex flex-col">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="text-sm font-bold text-gray-800">Field-specific Stats</h3>
-          <p className="text-[11px] text-gray-400 mt-0.5">도메인별 역량 지수</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] text-gray-400">종합 평균</p>
-          <p className="text-xl font-bold text-primary">{total}<span className="text-xs font-normal text-gray-400">/100</span></p>
-        </div>
+    <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-700">Field-specific Stats</h3>
+        <span className="text-xs font-bold text-primary">{hasSyncedData ? `${average} avg` : '연동 필요'}</span>
       </div>
 
-      {/* 차트 영역 */}
-      <div className="flex-1 relative" style={{ minHeight: '220px' }}>
-        <Radar data={data} options={options} />
-      </div>
+      {!hasSyncedData && (
+        <div className="flex-1 min-h-[220px] flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center px-4">
+          <p className="text-xs text-gray-400">계정을 연동하고 활동 데이터를 동기화하면 분야별 점수가 표시됩니다.</p>
+        </div>
+      )}
 
-      {/* 점수 배지 요약 */}
-      <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-50">
-        {LABELS.map((label, i) => (
-          <ScorePill key={label} label={label} value={MY_SCORES[i]} />
-        ))}
-      </div>
+      {hasSyncedData && (
+        <div className="grid grid-cols-1 lg:grid-cols-[190px_1fr] gap-4 flex-1">
+          <div className="relative flex items-center justify-center min-h-[190px]">
+            <svg className="w-[190px] h-[190px]" viewBox="0 0 200 200" role="img" aria-label="Field-specific stats radar chart">
+              {[25, 50, 75, 100].map(level => {
+                const points = FIELDS
+                  .map((_, index) => getPoint(index, level, 76))
+                  .map(point => `${point.x},${point.y}`)
+                  .join(' ')
+
+                return (
+                  <polygon
+                    key={level}
+                    points={points}
+                    fill="none"
+                    stroke="#dbeafe"
+                    strokeWidth="1"
+                  />
+                )
+              })}
+              {FIELDS.map((_, index) => {
+                const point = getPoint(index, 100, 76)
+
+                return (
+                  <line
+                    key={index}
+                    x1="100"
+                    y1="100"
+                    x2={point.x}
+                    y2={point.y}
+                    stroke="#e0e7ff"
+                    strokeWidth="1"
+                  />
+                )
+              })}
+              <polygon points={polygon} fill="rgba(37, 99, 235, 0.18)" stroke="#2563eb" strokeWidth="2" />
+              {values.map((field, index) => {
+                const point = getPoint(index, field.value, 76)
+
+                return (
+                  <circle key={field.key} cx={point.x} cy={point.y} r="3.5" fill="#2563eb" />
+                )
+              })}
+            </svg>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 content-center">
+            {values.map(field => (
+              <div key={field.key} className="grid grid-cols-[1fr_auto] gap-3 items-center">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${field.color}`} />
+                    <span className="text-[11px] text-gray-600 truncate">{field.label}</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${field.color}`} style={{ width: `${field.value}%` }} />
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-gray-800 tabular-nums">{field.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

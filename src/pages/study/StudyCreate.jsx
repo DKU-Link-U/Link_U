@@ -1,18 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ROUTE_PATHS } from '../../routes/paths'
+import { useStudies } from '../../store'
 
 export default function StudyCreate() {
   const navigate = useNavigate()
+  const { addStudy } = useStudies()
   const [form, setForm] = useState({
     title: '', description: '', techStack: '', capacity: 4, requiredRating: 800,
   })
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault()
+    await addStudy(form)
     alert('스터디 모집글이 등록되었습니다.')
-    navigate('/study')
+    navigate(ROUTE_PATHS.study.list)
   }
 
   return (

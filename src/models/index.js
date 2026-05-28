@@ -21,7 +21,8 @@ export const mockRating = {
   userId: 'user_001',
   githubCommitCount: 342,
   baekjoonTier: 'Gold IV',
-  programmersLevel: 'Level 3',
+  dreamhackScore: 0,
+  dreamhackSolvedCount: 0,
   totalRatingScore: 1200,
   // calculateTotalRating(): githubCommit(40%) + baekjoon(35%) + programmers(25%)
   history: [
@@ -212,7 +213,7 @@ function generateGrass(weeks = 24) {
     date: new Date(Date.now() - (weeks * 7 - i) * 86400000).toISOString().slice(0, 10),
     github: Math.floor(Math.random() * 8),
     baekjoon: Math.floor(Math.random() * 5),
-    programmers: Math.floor(Math.random() * 4),
+    dreamhack: Math.floor(Math.random() * 4),
   }))
 }
 export const mockCommitData = generateGrass(24)
