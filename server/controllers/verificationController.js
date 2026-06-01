@@ -1,6 +1,8 @@
 const github = require('../crawlers/github');
 const solvedac = require('../crawlers/solvedac');
 const dreamhack = require('../crawlers/dreamhack');
+const { linkExternalAccount } = require('../services/accountLinkService');
+const { getUserFromRequest } = require('../utils/requestAuth');
 
 const PLATFORM_LOADERS = {
   github: (accountId) => github.getUserProfile(accountId),
@@ -57,9 +59,14 @@ async function verifyExternalAccount(req, res) {
   }
 
   try {
+    const { user } = await getUserFromRequest(req);
     const profile = await loader(accountId.trim());
     const verificationTarget = profile.verificationText || profile;
     const verified = containsToken(verificationTarget, token.trim());
+    const canonicalAccountId = profile.login || profile.handle || profile.nickname || accountId.trim();
+    const linkedAccount = verified
+      ? await linkExternalAccount(user.id, platformKey, canonicalAccountId)
+      : null;
 
     return res.json({
       success: true,
@@ -67,6 +74,8 @@ async function verifyExternalAccount(req, res) {
       platform: platformKey,
       platformName: PLATFORM_LABELS[platform] || PLATFORM_LABELS[platformKey],
       accountId,
+      persisted: Boolean(linkedAccount),
+      user: linkedAccount?.user,
       message: verified
         ? '계정 소유 확인이 완료되었습니다.'
         : '공개 프로필에서 검증 코드를 찾지 못했습니다.',

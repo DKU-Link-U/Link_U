@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react'
 import {
+  buildGoogleLoginUrl,
   buildGithubOAuthUrl,
+  disconnectExternalAccount,
   GITHUB_OAUTH_MESSAGE_TYPES,
+  GOOGLE_OAUTH_MESSAGE_TYPES,
   verifyExternalAccount,
 } from '../../api/accountVerificationApi'
 import { useAccountLinks, useAppState, useExternalProfile } from '../../store'
+import { openOAuthPopup } from '../../utils/oauthPopup'
 
 const PLATFORM_DEFS = [
   {
@@ -82,7 +86,7 @@ function openExternalUrl(url) {
 }
 
 export default function AccountLinks() {
-  const { rating } = useAppState()
+  const { accessToken, rating, setCurrentUser } = useAppState()
   const {
     accountLinks,
     setAccountLink,
@@ -149,100 +153,94 @@ export default function AccountLinks() {
     setInputMap(m => ({ ...m, [key]: '' }))
   }
 
-  const connectGithubWithOAuth = () => {
+  const connectGithubWithOAuth = async () => {
     clearExternalProfileError()
     setGithubOAuth({
       loading: true,
       error: null,
     })
 
-    let settled = false
-    let popup = null
-    let closedTimer = null
-    let timeoutTimer = null
-    const cleanup = () => {
-      window.removeEventListener('message', handleMessage)
-      if (closedTimer) window.clearInterval(closedTimer)
-      if (timeoutTimer) window.clearTimeout(timeoutTimer)
-    }
-    const finish = nextState => {
-      settled = true
-      cleanup()
-      setGithubOAuth(nextState)
-    }
-    const handleMessage = event => {
-      const data = event.data
+    try {
+      let linkToken = accessToken
 
-      if (data?.source !== 'link-u' || data.platform !== 'github') return
+      if (!linkToken) {
+        const googleResult = await openOAuthPopup({
+          url: buildGoogleLoginUrl(),
+          name: 'link-u-google-login',
+          platform: 'google',
+          successType: GOOGLE_OAUTH_MESSAGE_TYPES.success,
+          errorType: GOOGLE_OAUTH_MESSAGE_TYPES.error,
+          closedMessage: 'Link_U 로그인 창이 닫혔습니다.',
+          timeoutMessage: 'Link_U 로그인 응답 시간이 초과되었습니다.',
+        })
 
-      if (data.type === GITHUB_OAUTH_MESSAGE_TYPES.success && data.username) {
+        linkToken = googleResult.accessToken
+
+        if (!linkToken) {
+          throw new Error('Link_U 로그인 토큰을 받지 못했습니다. 다시 로그인해주세요.')
+        }
+
+        if (googleResult.user) {
+          setCurrentUser(googleResult.user, linkToken)
+        }
+      }
+
+      const githubResult = await openOAuthPopup({
+        url: buildGithubOAuthUrl(linkToken),
+        name: 'link-u-github-oauth',
+        platform: 'github',
+        successType: GITHUB_OAUTH_MESSAGE_TYPES.success,
+        errorType: GITHUB_OAUTH_MESSAGE_TYPES.error,
+        closedMessage: 'GitHub 로그인 창이 닫혔습니다.',
+        timeoutMessage: 'GitHub 로그인 응답 시간이 초과되었습니다.',
+      })
+
+      if (githubResult.username) {
         setAccountLink({
           platform: 'github',
-          username: data.username,
+          username: githubResult.username,
           verificationCode: '',
         })
         verifyAccountLink('github')
-        finish({
-          loading: false,
-          error: null,
-        })
-        return
       }
 
-      if (data.type === GITHUB_OAUTH_MESSAGE_TYPES.error) {
-        finish({
-          loading: false,
-          error: data.message || 'GitHub 계정 연동에 실패했습니다.',
-        })
+      if (githubResult.user) {
+        setCurrentUser(githubResult.user, linkToken)
       }
-    }
-    window.addEventListener('message', handleMessage)
 
-    popup = window.open(
-      buildGithubOAuthUrl(),
-      'link-u-github-oauth',
-      'width=560,height=720',
-    )
-
-    if (!popup) {
-      cleanup()
-      setGithubOAuth({
-        loading: false,
-        error: '팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해주세요.',
-      })
-      return
-    }
-
-    closedTimer = window.setInterval(() => {
-      if (!settled && popup.closed) {
-        finish({
-          loading: false,
-          error: 'GitHub 로그인 창이 닫혔습니다.',
-        })
-      }
-    }, 500)
-    timeoutTimer = window.setTimeout(() => {
-      if (!settled) {
-        finish({
-          loading: false,
-          error: 'GitHub 로그인 응답 시간이 초과되었습니다.',
-        })
-        popup.close()
-      }
-    }, 120000)
-  }
-
-  const disconnect = key => {
-    clearExternalProfileError()
-    disconnectAccountLink(key)
-    setVerificationErrors(errors => ({ ...errors, [key]: null }))
-    setVerifyingMap(map => ({ ...map, [key]: false }))
-
-    if (key === 'github') {
       setGithubOAuth({
         loading: false,
         error: null,
       })
+    } catch (error) {
+      setGithubOAuth({
+        loading: false,
+        error: error.message || 'GitHub 계정 연동에 실패했습니다.',
+      })
+    }
+  }
+
+  const disconnect = async key => {
+    clearExternalProfileError()
+    setVerificationErrors(errors => ({ ...errors, [key]: null }))
+    setVerifyingMap(map => ({ ...map, [key]: false }))
+
+    try {
+      const result = await disconnectExternalAccount({ platform: key, accessToken })
+      disconnectAccountLink(key)
+
+      if (result.user) {
+        setCurrentUser(result.user)
+      }
+
+      if (key === 'github') {
+        setGithubOAuth({
+          loading: false,
+          error: null,
+        })
+      }
+    } catch (error) {
+      setVerificationErrors(errors => ({ ...errors, [key]: error.message }))
     }
   }
 
@@ -272,10 +270,14 @@ export default function AccountLinks() {
         platform: platform.verifyKey || platform.key,
         accountId: platform.username,
         token: platform.verificationCode,
+        accessToken,
       })
 
       if (result.verified) {
         verifyAccountLink(key)
+        if (result.user) {
+          setCurrentUser(result.user)
+        }
       }
 
       setVerifyingMap(map => ({ ...map, [key]: false }))

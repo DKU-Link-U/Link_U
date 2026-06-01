@@ -43,10 +43,11 @@ function signValue(value, secret) {
     .digest('base64url');
 }
 
-function createState(origin, secret) {
+function createState(origin, secret, linkUserId) {
   const payload = toBase64Url(JSON.stringify({
     origin: normalizeFrontendOrigin(origin),
     createdAt: Date.now(),
+    userId: linkUserId,
   }));
   const signature = signValue(payload, secret);
 
@@ -103,7 +104,7 @@ function normalizeFrontendOrigin(origin) {
   return fallbackOrigin;
 }
 
-function buildGithubAuthorizeUrl(req, origin) {
+function buildGithubAuthorizeUrl(req, origin, linkUserId) {
   const config = getConfig(req);
 
   if (!hasGithubOAuthConfig()) {
@@ -117,7 +118,7 @@ function buildGithubAuthorizeUrl(req, origin) {
     client_id: config.clientId,
     redirect_uri: config.callbackURL,
     scope: 'read:user',
-    state: createState(origin, config.stateSecret),
+    state: createState(origin, config.stateSecret, linkUserId),
     allow_signup: 'true',
   });
 
@@ -176,9 +177,20 @@ function getOriginFromState(req, state) {
   return normalizeFrontendOrigin(parsedState.origin);
 }
 
+function getGithubOAuthState(req, state) {
+  const config = getConfig(req);
+  const parsedState = parseState(state, config.stateSecret);
+
+  return {
+    ...parsedState,
+    origin: normalizeFrontendOrigin(parsedState.origin),
+  };
+}
+
 module.exports = {
   buildGithubAuthorizeUrl,
   exchangeCodeForGithubUser,
+  getGithubOAuthState,
   getOriginFromState,
   hasGithubOAuthConfig,
   normalizeFrontendOrigin,

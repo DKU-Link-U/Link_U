@@ -16,8 +16,8 @@ import {
   mockRankingList,
   mockRating,
   mockStudyGroups,
-  mockUser,
 } from '../models'
+import { canAccessApp } from '../utils/auth'
 import { AppStateContext } from './context'
 import { getApplicationEligibility } from './communityEligibility'
 import { mapIntegratedUserData } from './userDataMapper'
@@ -51,9 +51,18 @@ const STORAGE_KEY = 'link-u-app-state'
 const INITIAL_ACCESS_TOKEN = import.meta.env.VITE_API_ACCESS_TOKEN ?? ''
 
 const ACCOUNT_LINK_IDS = {
-  github: 'githubId',
-  boj: 'bojId',
-  dreamhack: 'dhId',
+  github: {
+    userKey: 'githubId',
+    profileKey: 'githubId',
+  },
+  boj: {
+    userKey: 'bojId',
+    profileKey: 'bojId',
+  },
+  dreamhack: {
+    userKey: 'dreamhackId',
+    profileKey: 'dhId',
+  },
 }
 
 const baseAccountLinks = {
@@ -89,9 +98,9 @@ const baseProjectFilters = {
 
 const baseInitialState = {
   auth: {
-    isAuthenticated: true,
-    user: mockUser,
-    accessToken: INITIAL_ACCESS_TOKEN,
+    isAuthenticated: false,
+    user: null,
+    accessToken: '',
   },
   rating: mockRating,
   activity: {
@@ -154,13 +163,28 @@ function createInitialState() {
   const persistedState = getPersistedState()
 
   if (!persistedState) return baseInitialState
-  const persistedUser = persistedState.auth?.user ?? {}
+  const persistedAuth = persistedState.auth ?? {}
+  const persistedUser = persistedAuth.user ?? null
+  const persistedAccessToken = persistedAuth.accessToken || INITIAL_ACCESS_TOKEN
+  const restoredAuth = {
+    isAuthenticated: Boolean(persistedAuth.isAuthenticated),
+    user: persistedUser,
+    accessToken: persistedAccessToken,
+  }
+  const canRestoreAuth = canAccessApp(restoredAuth)
   const persistedIds = persistedState.externalProfile?.ids ?? {}
   const restoredAccountLinks = Object.entries(baseAccountLinks).reduce((links, [platform, baseLink]) => {
-    const idKey = ACCOUNT_LINK_IDS[platform]
+    const idConfig = ACCOUNT_LINK_IDS[platform]
     const persistedLink = persistedState.accountLinks?.[platform] ?? {}
-    const username = persistedLink.username || persistedUser[idKey] || persistedIds[idKey] || ''
-    const wasSynced = Boolean(persistedState.externalProfile?.loadedAt && persistedIds[idKey])
+    const username = persistedLink.username ||
+      persistedUser[idConfig.userKey] ||
+      persistedIds[idConfig.profileKey] ||
+      persistedIds[idConfig.userKey] ||
+      ''
+    const wasSynced = Boolean(persistedState.externalProfile?.loadedAt && (
+      persistedIds[idConfig.profileKey] ||
+      persistedIds[idConfig.userKey]
+    ))
 
     links[platform] = {
       ...baseLink,
@@ -175,12 +199,9 @@ function createInitialState() {
   return {
     ...baseInitialState,
     auth: {
-      ...baseInitialState.auth,
-      ...persistedState.auth,
-      user: {
-        ...baseInitialState.auth.user,
-        ...persistedState.auth?.user,
-      },
+      isAuthenticated: canRestoreAuth,
+      user: canRestoreAuth ? persistedUser : null,
+      accessToken: canRestoreAuth ? persistedAccessToken : '',
     },
     rating: {
       ...baseInitialState.rating,
@@ -231,7 +252,7 @@ function createInitialState() {
       partialSuccess: false,
       message: null,
     },
-    accountLinks: restoredAccountLinks,
+    accountLinks: canRestoreAuth ? restoredAccountLinks : baseAccountLinks,
   }
 }
 
@@ -262,17 +283,52 @@ function persistState(state) {
   }
 }
 
+function mergeAccountLinksFromUser(accountLinks, user) {
+  if (!user) return accountLinks
+
+  return Object.entries(baseAccountLinks).reduce((links, [platform, baseLink]) => {
+    const currentLink = accountLinks[platform] ?? baseLink
+    const userField = ACCOUNT_LINK_IDS[platform].userKey
+    const hasUserField = Object.prototype.hasOwnProperty.call(user, userField)
+    const username = user[userField]
+
+    if (username) {
+      links[platform] = {
+        ...currentLink,
+        username,
+        verified: true,
+        verifiedAt: currentLink.verifiedAt ?? new Date().toISOString(),
+      }
+      return links
+    }
+
+    links[platform] = hasUserField ? baseLink : currentLink
+
+    return links
+  }, { ...accountLinks })
+}
+
 function appStateReducer(state, action) {
   switch (action.type) {
-    case ACTIONS.SET_CURRENT_USER:
+    case ACTIONS.SET_CURRENT_USER: {
+      const nextUser = action.payload?.user ?? action.payload
+      const nextAccessToken = action.payload?.accessToken ?? state.auth.accessToken
+      const nextAuth = {
+        isAuthenticated: Boolean(nextUser),
+        user: nextUser,
+        accessToken: nextAccessToken,
+      }
+
       return {
         ...state,
         auth: {
-          isAuthenticated: Boolean(action.payload?.user ?? action.payload),
-          user: action.payload?.user ?? action.payload,
-          accessToken: action.payload?.accessToken ?? state.auth.accessToken,
+          isAuthenticated: canAccessApp(nextAuth),
+          user: nextUser,
+          accessToken: nextAccessToken,
         },
+        accountLinks: mergeAccountLinksFromUser(state.accountLinks, nextUser),
       }
+    }
 
     case ACTIONS.LOGOUT:
       return {
@@ -289,6 +345,10 @@ function appStateReducer(state, action) {
         ...state,
         auth: {
           ...state.auth,
+          isAuthenticated: canAccessApp({
+            ...state.auth,
+            accessToken: action.payload ?? '',
+          }),
           accessToken: action.payload ?? '',
         },
       }

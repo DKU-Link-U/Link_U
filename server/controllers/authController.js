@@ -1,17 +1,27 @@
+const crypto = require('crypto');
 const passport = require('passport');
 const { hasGoogleOAuthConfig } = require('../config/passport');
 const {
   buildGithubAuthorizeUrl,
   exchangeCodeForGithubUser,
-  getOriginFromState,
+  getGithubOAuthState,
   normalizeFrontendOrigin,
 } = require('../services/githubOAuthService');
+const { linkExternalAccount } = require('../services/accountLinkService');
+const { getUserFromAccessToken } = require('../utils/requestAuth');
 const { generateAccessToken } = require('../utils/jwt');
 
 const GITHUB_OAUTH_MESSAGE_TYPES = {
   success: 'LINK_U_GITHUB_OAUTH_SUCCESS',
   error: 'LINK_U_GITHUB_OAUTH_ERROR',
 };
+
+const GOOGLE_OAUTH_MESSAGE_TYPES = {
+  success: 'LINK_U_GOOGLE_OAUTH_SUCCESS',
+  error: 'LINK_U_GOOGLE_OAUTH_ERROR',
+};
+
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 function escapeHtml(value) {
   return String(value)
@@ -22,17 +32,17 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function sendGithubOAuthPopupResult(res, origin, payload, statusCode = 200) {
+function sendOAuthPopupResult(res, origin, platform, platformLabel, payload, statusCode = 200) {
   const targetOrigin = normalizeFrontendOrigin(origin);
   const messagePayload = {
     source: 'link-u',
-    platform: 'github',
+    platform,
     ...payload,
   };
-  const title = payload.success ? 'GitHub 연동 완료' : 'GitHub 연동 실패';
+  const title = payload.success ? `${platformLabel} 인증 완료` : `${platformLabel} 인증 실패`;
   const message = payload.message || (payload.success
-    ? 'GitHub 계정 연동이 완료되었습니다.'
-    : 'GitHub 계정 연동에 실패했습니다.');
+    ? `${platformLabel} 인증이 완료되었습니다.`
+    : `${platformLabel} 인증에 실패했습니다.`);
 
   return res.status(statusCode).send(`<!doctype html>
 <html lang="ko">
@@ -89,60 +99,168 @@ function sendGithubOAuthPopupResult(res, origin, payload, statusCode = 200) {
 </html>`);
 }
 
+function sendGithubOAuthPopupResult(res, origin, payload, statusCode = 200) {
+  return sendOAuthPopupResult(res, origin, 'github', 'GitHub', payload, statusCode);
+}
+
+function sendGoogleOAuthPopupResult(res, origin, payload, statusCode = 200) {
+  return sendOAuthPopupResult(res, origin, 'google', 'Google', payload, statusCode);
+}
+
+function toBase64Url(value) {
+  return Buffer.from(value).toString('base64url');
+}
+
+function fromBase64Url(value) {
+  return Buffer.from(value, 'base64url').toString('utf8');
+}
+
+function signValue(value, secret) {
+  return crypto
+    .createHmac('sha256', secret)
+    .update(value)
+    .digest('base64url');
+}
+
+function getGoogleOAuthStateSecret() {
+  return process.env.GOOGLE_OAUTH_STATE_SECRET
+    || process.env.JWT_SECRET
+    || process.env.GOOGLE_CLIENT_SECRET;
+}
+
+function createGoogleOAuthState(origin) {
+  const secret = getGoogleOAuthStateSecret();
+  const payload = toBase64Url(JSON.stringify({
+    origin: normalizeFrontendOrigin(origin),
+    createdAt: Date.now(),
+  }));
+  const signature = signValue(payload, secret);
+
+  return `${payload}.${signature}`;
+}
+
+function parseGoogleOAuthState(state) {
+  const secret = getGoogleOAuthStateSecret();
+  const [payload, signature] = String(state || '').split('.');
+
+  if (!payload || !signature) {
+    throw new Error('Google OAuth state가 올바르지 않습니다.');
+  }
+
+  const expectedSignature = signValue(payload, secret);
+
+  if (
+    signature.length !== expectedSignature.length
+      || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
+  ) {
+    throw new Error('Google OAuth state 검증에 실패했습니다.');
+  }
+
+  const parsed = JSON.parse(fromBase64Url(payload));
+
+  if (!parsed.createdAt || Date.now() - parsed.createdAt > OAUTH_STATE_TTL_MS) {
+    throw new Error('Google OAuth 요청 시간이 만료되었습니다.');
+  }
+
+  return parsed;
+}
+
+function getGoogleOAuthOrigin(req) {
+  if (!req.query.state) {
+    return normalizeFrontendOrigin(req.query.origin);
+  }
+
+  return normalizeFrontendOrigin(parseGoogleOAuthState(req.query.state).origin);
+}
+
 function startGoogleLogin(req, res, next) {
   if (!hasGoogleOAuthConfig()) {
-    return res.status(503).json({
-      success: false,
-      message: 'Google OAuth 환경 변수가 설정되지 않았습니다.',
-    });
+    return sendGoogleOAuthPopupResult(
+      res,
+      req.query.origin,
+      {
+        success: false,
+        type: GOOGLE_OAUTH_MESSAGE_TYPES.error,
+        message: 'Google OAuth 환경 변수가 설정되지 않았습니다.',
+      },
+      503,
+    );
   }
 
   return passport.authenticate('google', {
     scope: ['profile', 'email'],
     session: false,
+    prompt: 'select_account',
+    hd: 'dankook.ac.kr',
+    state: createGoogleOAuthState(req.query.origin),
   })(req, res, next);
 }
 
 function handleGoogleCallback(req, res, next) {
+  let origin;
+
+  try {
+    origin = getGoogleOAuthOrigin(req);
+  } catch (stateError) {
+    return sendGoogleOAuthPopupResult(
+      res,
+      req.query.origin,
+      {
+        success: false,
+        type: GOOGLE_OAUTH_MESSAGE_TYPES.error,
+        message: stateError.message,
+      },
+      400,
+    );
+  }
+
   if (!hasGoogleOAuthConfig()) {
-    return res.status(503).json({
-      success: false,
-      message: 'Google OAuth 환경 변수가 설정되지 않았습니다.',
-    });
+    return sendGoogleOAuthPopupResult(
+      res,
+      origin,
+      {
+        success: false,
+        type: GOOGLE_OAUTH_MESSAGE_TYPES.error,
+        message: 'Google OAuth 환경 변수가 설정되지 않았습니다.',
+      },
+      503,
+    );
   }
 
   return passport.authenticate('google', { session: false }, (error, user) => {
     if (error) {
       const statusCode = error.statusCode || 401;
 
-      return res.status(statusCode).json({
+      return sendGoogleOAuthPopupResult(res, origin, {
         success: false,
+        type: GOOGLE_OAUTH_MESSAGE_TYPES.error,
         message: error.publicMessage || 'Google 로그인에 실패했습니다.',
         error: error.message,
-      });
+      }, statusCode);
     }
 
     if (!user) {
-      return res.status(401).json({
+      return sendGoogleOAuthPopupResult(res, origin, {
         success: false,
+        type: GOOGLE_OAUTH_MESSAGE_TYPES.error,
         message: 'Google 로그인에 실패했습니다.',
-      });
+      }, 401);
     }
 
-    return res.json({
+    return sendGoogleOAuthPopupResult(res, origin, {
       success: true,
+      type: GOOGLE_OAUTH_MESSAGE_TYPES.success,
       message: 'Google 로그인에 성공했습니다.',
-      data: {
-        user,
-        accessToken: generateAccessToken(user),
-      },
+      user,
+      accessToken: generateAccessToken(user),
     });
   })(req, res, next);
 }
 
-function startGithubLink(req, res) {
+async function startGithubLink(req, res) {
   try {
-    const authorizeUrl = buildGithubAuthorizeUrl(req, req.query.origin);
+    const { user } = await getUserFromAccessToken(req.query.linkToken);
+    const authorizeUrl = buildGithubAuthorizeUrl(req, req.query.origin, user.id);
 
     return res.redirect(authorizeUrl);
   } catch (error) {
@@ -164,7 +282,15 @@ async function handleGithubCallback(req, res) {
   let origin = req.query.origin;
 
   try {
-    origin = getOriginFromState(req, state);
+    const oauthState = getGithubOAuthState(req, state);
+    origin = oauthState.origin;
+
+    if (!oauthState.userId) {
+      const authError = new Error('GitHub 연동을 시작한 Link_U 사용자를 확인할 수 없습니다.');
+      authError.statusCode = 401;
+      authError.publicMessage = 'Link_U 로그인 후 GitHub 계정 연동을 다시 시도해주세요.';
+      throw authError;
+    }
 
     if (error) {
       throw new Error(errorDescription || 'GitHub 로그인이 취소되었습니다.');
@@ -175,6 +301,7 @@ async function handleGithubCallback(req, res) {
     }
 
     const githubUser = await exchangeCodeForGithubUser(req, code);
+    const linkedAccount = await linkExternalAccount(oauthState.userId, 'github', githubUser.login);
 
     return sendGithubOAuthPopupResult(res, origin, {
       success: true,
@@ -182,6 +309,8 @@ async function handleGithubCallback(req, res) {
       username: githubUser.login,
       profileUrl: githubUser.profileUrl,
       avatarUrl: githubUser.avatarUrl,
+      persisted: true,
+      user: linkedAccount.user,
       message: 'GitHub 계정 연동이 완료되었습니다.',
     });
   } catch (callbackError) {
