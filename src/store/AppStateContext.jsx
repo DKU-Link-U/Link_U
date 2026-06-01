@@ -7,8 +7,8 @@ import {
   markMessageRead as markMessageReadRequest,
   sendMessage as sendMessageRequest,
 } from '../api'
-import { clearStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
-import { fetchIntegratedUserData } from '../api/userApi'
+import { clearStoredAccessToken, getStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
+import { fetchCurrentUser, fetchIntegratedUserData } from '../api/userApi'
 import {
   mockMessages,
   mockNotifications,
@@ -23,6 +23,8 @@ import { getApplicationEligibility } from './communityEligibility'
 import { mapIntegratedUserData } from './userDataMapper'
 
 const ACTIONS = {
+  AUTH_BOOTSTRAP_SUCCESS: 'auth/bootstrapSuccess',
+  AUTH_BOOTSTRAP_ERROR: 'auth/bootstrapError',
   SET_CURRENT_USER: 'auth/setCurrentUser',
   LOGOUT: 'auth/logout',
   SET_THEME: 'preferences/setTheme',
@@ -101,6 +103,7 @@ const baseInitialState = {
     isAuthenticated: false,
     user: null,
     accessToken: '',
+    initialized: true,
   },
   rating: mockRating,
   activity: {
@@ -166,11 +169,12 @@ function createInitialState() {
   const persistedAuth = persistedState.auth ?? {}
   const persistedUser = persistedAuth.user ?? null
   const persistedUserProfile = persistedUser ?? {}
-  const persistedAccessToken = persistedAuth.accessToken || INITIAL_ACCESS_TOKEN
+  const persistedAccessToken = persistedAuth.accessToken || getStoredAccessToken() || INITIAL_ACCESS_TOKEN
   const restoredAuth = {
     isAuthenticated: Boolean(persistedAuth.isAuthenticated),
     user: persistedUser,
     accessToken: persistedAccessToken,
+    initialized: !persistedAccessToken,
   }
   const canRestoreAuth = canAccessApp(restoredAuth)
   const persistedIds = persistedState.externalProfile?.ids ?? {}
@@ -198,12 +202,15 @@ function createInitialState() {
     return links
   }, {})
 
+  const shouldBootstrapAuth = Boolean(persistedAccessToken)
+
   return {
     ...baseInitialState,
     auth: {
       isAuthenticated: canRestoreAuth,
       user: canRestoreAuth ? persistedUser : null,
-      accessToken: canRestoreAuth ? persistedAccessToken : '',
+      accessToken: shouldBootstrapAuth ? persistedAccessToken : '',
+      initialized: !shouldBootstrapAuth,
     },
     rating: {
       ...baseInitialState.rating,
@@ -312,6 +319,39 @@ function mergeAccountLinksFromUser(accountLinks, user) {
 
 function appStateReducer(state, action) {
   switch (action.type) {
+    case ACTIONS.AUTH_BOOTSTRAP_SUCCESS: {
+      const nextUser = action.payload?.user ?? null
+      const nextAccessToken = action.payload?.accessToken ?? state.auth.accessToken
+      const nextAuth = {
+        isAuthenticated: Boolean(nextUser),
+        user: nextUser,
+        accessToken: nextAccessToken,
+      }
+
+      return {
+        ...state,
+        auth: {
+          isAuthenticated: canAccessApp(nextAuth),
+          user: nextUser,
+          accessToken: nextAccessToken,
+          initialized: true,
+        },
+        accountLinks: mergeAccountLinksFromUser(state.accountLinks, nextUser),
+      }
+    }
+
+    case ACTIONS.AUTH_BOOTSTRAP_ERROR:
+      return {
+        ...state,
+        auth: {
+          isAuthenticated: false,
+          user: null,
+          accessToken: '',
+          initialized: true,
+        },
+        accountLinks: baseAccountLinks,
+      }
+
     case ACTIONS.SET_CURRENT_USER: {
       const nextUser = action.payload?.user ?? action.payload
       const nextAccessToken = action.payload?.accessToken ?? state.auth.accessToken
@@ -327,6 +367,7 @@ function appStateReducer(state, action) {
           isAuthenticated: canAccessApp(nextAuth),
           user: nextUser,
           accessToken: nextAccessToken,
+          initialized: true,
         },
         accountLinks: mergeAccountLinksFromUser(state.accountLinks, nextUser),
       }
@@ -339,6 +380,7 @@ function appStateReducer(state, action) {
           isAuthenticated: false,
           user: null,
           accessToken: '',
+          initialized: true,
         },
       }
 
@@ -352,6 +394,7 @@ function appStateReducer(state, action) {
             accessToken: action.payload ?? '',
           }),
           accessToken: action.payload ?? '',
+          initialized: true,
         },
       }
 
@@ -605,6 +648,38 @@ export function AppStateProvider({ children }) {
     clearStoredAccessToken()
   }, [state.auth.accessToken])
 
+  useEffect(() => {
+    if (state.auth.initialized) return
+
+    let ignore = false
+
+    async function bootstrapCurrentUser() {
+      try {
+        const user = await fetchCurrentUser({ accessToken: state.auth.accessToken })
+
+        if (!ignore) {
+          dispatch({
+            type: ACTIONS.AUTH_BOOTSTRAP_SUCCESS,
+            payload: {
+              user,
+              accessToken: state.auth.accessToken,
+            },
+          })
+        }
+      } catch {
+        if (!ignore) {
+          dispatch({ type: ACTIONS.AUTH_BOOTSTRAP_ERROR })
+        }
+      }
+    }
+
+    bootstrapCurrentUser()
+
+    return () => {
+      ignore = true
+    }
+  }, [state.auth.accessToken, state.auth.initialized])
+
   const value = useMemo(() => {
     const currentUser = state.auth.user
     const accessToken = state.auth.accessToken
@@ -755,6 +830,7 @@ export function AppStateProvider({ children }) {
       externalProfile: state.externalProfile,
       accountLinks: state.accountLinks,
       isAuthenticated: state.auth.isAuthenticated,
+      authInitialized: state.auth.initialized,
       theme: state.preferences.theme,
       notifications: state.notifications,
       unreadNotificationCount: state.notifications.filter(notification => !notification.isRead).length,
