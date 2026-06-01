@@ -6,26 +6,75 @@ const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 const GITHUB_USER_URL = 'https://api.github.com/user';
 const STATE_TTL_MS = 10 * 60 * 1000;
 
+function readEnvValue(key) {
+  return String(process.env[key] || '').trim().replace(/^["']|["']$/g, '');
+}
+
 function getConfig(req) {
-  const callbackURL = process.env.GITHUB_OAUTH_CALLBACK_URL
+  const callbackURL = readEnvValue('GITHUB_OAUTH_CALLBACK_URL')
     || `${req.protocol}://${req.get('host')}/api/auth/github/callback`;
 
   return {
-    clientId: process.env.GITHUB_OAUTH_CLIENT_ID,
-    clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET,
+    clientId: readEnvValue('GITHUB_OAUTH_CLIENT_ID'),
+    clientSecret: readEnvValue('GITHUB_OAUTH_CLIENT_SECRET'),
     callbackURL,
-    stateSecret: process.env.GITHUB_OAUTH_STATE_SECRET
-      || process.env.JWT_SECRET
-      || process.env.GITHUB_OAUTH_CLIENT_SECRET,
+    stateSecret: readEnvValue('GITHUB_OAUTH_STATE_SECRET')
+      || readEnvValue('JWT_SECRET')
+      || readEnvValue('GITHUB_OAUTH_CLIENT_SECRET'),
   };
 }
 
+function getGithubOAuthConfigIssues(config = {
+  clientId: readEnvValue('GITHUB_OAUTH_CLIENT_ID'),
+  clientSecret: readEnvValue('GITHUB_OAUTH_CLIENT_SECRET'),
+  stateSecret: readEnvValue('GITHUB_OAUTH_STATE_SECRET') || readEnvValue('JWT_SECRET'),
+}) {
+  const issues = [];
+
+  if (!config.clientId) {
+    issues.push('GITHUB_OAUTH_CLIENT_ID가 비어 있습니다.');
+  }
+
+  if (!config.clientSecret) {
+    issues.push('GITHUB_OAUTH_CLIENT_SECRET이 비어 있습니다.');
+  } else if (config.clientSecret === config.clientId) {
+    issues.push('GITHUB_OAUTH_CLIENT_SECRET에 Client ID가 들어간 것으로 보입니다.');
+  } else if (config.clientSecret.length < 30 || /^Iv1\.|^Ov23/i.test(config.clientSecret)) {
+    issues.push('GITHUB_OAUTH_CLIENT_SECRET 값이 GitHub OAuth Client Secret 형식이 아닙니다.');
+  }
+
+  if (!config.stateSecret) {
+    issues.push('JWT_SECRET 또는 GITHUB_OAUTH_STATE_SECRET이 필요합니다.');
+  }
+
+  return issues;
+}
+
+function createGithubOAuthConfigError(issues) {
+  const error = new Error(issues.join(' '));
+  error.statusCode = 503;
+  error.publicMessage = [
+    'GitHub OAuth 설정이 올바르지 않습니다.',
+    'GitHub Developer settings > OAuth Apps에서 Client ID와 Client Secret을 다시 확인한 뒤 server/.env를 수정하고 백엔드 서버를 재시작해주세요.',
+    issues.join(' '),
+  ].join(' ');
+
+  return error;
+}
+
+function assertGithubOAuthConfig(req) {
+  const config = getConfig(req);
+  const issues = getGithubOAuthConfigIssues(config);
+
+  if (issues.length > 0) {
+    throw createGithubOAuthConfigError(issues);
+  }
+
+  return config;
+}
+
 function hasGithubOAuthConfig() {
-  return Boolean(
-    process.env.GITHUB_OAUTH_CLIENT_ID
-      && process.env.GITHUB_OAUTH_CLIENT_SECRET
-      && (process.env.GITHUB_OAUTH_STATE_SECRET || process.env.JWT_SECRET),
-  );
+  return getGithubOAuthConfigIssues().length === 0;
 }
 
 function toBase64Url(value) {
@@ -105,14 +154,7 @@ function normalizeFrontendOrigin(origin) {
 }
 
 function buildGithubAuthorizeUrl(req, origin, linkUserId) {
-  const config = getConfig(req);
-
-  if (!hasGithubOAuthConfig()) {
-    const error = new Error('GitHub OAuth 환경 변수가 설정되지 않았습니다.');
-    error.statusCode = 503;
-    error.publicMessage = 'GitHub OAuth 환경 변수가 설정되지 않았습니다. GITHUB_OAUTH_CLIENT_ID, GITHUB_OAUTH_CLIENT_SECRET, JWT_SECRET을 확인해주세요.';
-    throw error;
-  }
+  const config = assertGithubOAuthConfig(req);
 
   const params = new URLSearchParams({
     client_id: config.clientId,
@@ -120,13 +162,14 @@ function buildGithubAuthorizeUrl(req, origin, linkUserId) {
     scope: 'read:user',
     state: createState(origin, config.stateSecret, linkUserId),
     allow_signup: 'true',
+    prompt: 'select_account',
   });
 
   return `${GITHUB_AUTHORIZE_URL}?${params.toString()}`;
 }
 
 async function exchangeCodeForGithubUser(req, code) {
-  const config = getConfig(req);
+  const config = assertGithubOAuthConfig(req);
 
   const tokenResponse = await axios.post(
     GITHUB_TOKEN_URL,
@@ -146,7 +189,16 @@ async function exchangeCodeForGithubUser(req, code) {
   const accessToken = tokenResponse.data?.access_token;
 
   if (!accessToken) {
-    throw new Error(tokenResponse.data?.error_description || 'GitHub access token을 발급받지 못했습니다.');
+    const tokenError = new Error(tokenResponse.data?.error_description || 'GitHub access token을 발급받지 못했습니다.');
+    tokenError.statusCode = 400;
+
+    if (tokenResponse.data?.error === 'incorrect_client_credentials') {
+      tokenError.publicMessage = 'GitHub OAuth Client ID 또는 Client Secret이 올바르지 않습니다. GitHub OAuth App에서 값을 다시 발급받아 server/.env에 설정한 뒤 백엔드 서버를 재시작해주세요.';
+    } else if (tokenResponse.data?.error === 'bad_verification_code') {
+      tokenError.publicMessage = 'GitHub 로그인 코드가 만료되었거나 이미 사용되었습니다. GitHub 연동을 다시 시도해주세요.';
+    }
+
+    throw tokenError;
   }
 
   const userResponse = await axios.get(GITHUB_USER_URL, {
@@ -190,6 +242,7 @@ function getGithubOAuthState(req, state) {
 module.exports = {
   buildGithubAuthorizeUrl,
   exchangeCodeForGithubUser,
+  getGithubOAuthConfigIssues,
   getGithubOAuthState,
   getOriginFromState,
   hasGithubOAuthConfig,
