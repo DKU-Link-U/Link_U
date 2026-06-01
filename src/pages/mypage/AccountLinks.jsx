@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   buildGoogleLoginUrl,
   buildGithubOAuthUrl,
   disconnectExternalAccount,
+  fetchExternalAccountLinks,
   GITHUB_OAUTH_MESSAGE_TYPES,
   GOOGLE_OAUTH_MESSAGE_TYPES,
   verifyExternalAccount,
@@ -102,6 +103,11 @@ export default function AccountLinks() {
     loading: false,
     error: null,
   })
+  const [dbLinkStatus, setDbLinkStatus] = useState({
+    loadedAccessToken: '',
+    loading: false,
+    error: null,
+  })
   const platforms = useMemo(() => PLATFORM_DEFS.map(platform => {
     const link = accountLinks[platform.key] ?? {}
 
@@ -128,6 +134,50 @@ export default function AccountLinks() {
   const verifiedCount = PLATFORM_DEFS.filter(platform => linkedIds[platform.idKey]?.trim()).length
   const connectedCount = platforms.filter(platform => platform.connected).length
   const canSync = verifiedCount > 0 && !externalProfile.loading
+
+  useEffect(() => {
+    if (!accessToken || dbLinkStatus.loadedAccessToken === accessToken) return
+
+    let ignore = false
+
+    async function loadDbAccountLinks() {
+      setDbLinkStatus(status => ({
+        ...status,
+        loading: true,
+        error: null,
+      }))
+
+      try {
+        const result = await fetchExternalAccountLinks({ accessToken })
+
+        if (ignore) return
+
+        if (result.user) {
+          setCurrentUser(result.user, accessToken)
+        }
+
+        setDbLinkStatus({
+          loadedAccessToken: accessToken,
+          loading: false,
+          error: null,
+        })
+      } catch (error) {
+        if (ignore) return
+
+        setDbLinkStatus({
+          loadedAccessToken: accessToken,
+          loading: false,
+          error: error.message || '계정 연동 상태를 불러오지 못했습니다.',
+        })
+      }
+    }
+
+    loadDbAccountLinks()
+
+    return () => {
+      ignore = true
+    }
+  }, [accessToken, dbLinkStatus.loadedAccessToken, setCurrentUser])
 
   const connect = key => {
     const platform = PLATFORM_DEFS.find(item => item.key === key)
@@ -322,6 +372,18 @@ export default function AccountLinks() {
       {connectedCount > 0 && verifiedCount === 0 && (
         <div className="bg-yellow-50 border border-yellow-100 text-yellow-700 text-xs rounded-xl px-4 py-3">
           계정 소유 확인을 완료해야 활동 데이터를 동기화할 수 있습니다.
+        </div>
+      )}
+
+      {dbLinkStatus.loading && (
+        <div className="bg-blue-50 border border-blue-100 text-blue-700 text-xs rounded-xl px-4 py-3">
+          DB에 저장된 계정 연동 상태를 확인하고 있습니다.
+        </div>
+      )}
+
+      {dbLinkStatus.error && (
+        <div className="bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl px-4 py-3">
+          {dbLinkStatus.error}
         </div>
       )}
 

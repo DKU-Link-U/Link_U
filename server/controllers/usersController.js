@@ -6,11 +6,38 @@ const {
   saveExternalActivitySync,
 } = require('../services/externalActivityService');
 
+function mapAccountLinks(user) {
+  return {
+    github: {
+      username: user.githubId || '',
+      verified: Boolean(user.githubId),
+    },
+    boj: {
+      username: user.bojId || '',
+      verified: Boolean(user.bojId),
+    },
+    dreamhack: {
+      username: user.dreamhackId || '',
+      verified: Boolean(user.dreamhackId),
+    },
+  };
+}
+
 function getMe(req, res) {
   res.json({
     success: true,
     data: {
       user: toSafeUser(req.user),
+    },
+  });
+}
+
+function getAccountLinks(req, res) {
+  res.json({
+    success: true,
+    data: {
+      user: toSafeUser(req.user),
+      accountLinks: mapAccountLinks(req.user),
     },
   });
 }
@@ -97,6 +124,7 @@ async function getMyExternalActivity(req, res) {
 }
 
 module.exports = {
+  getAccountLinks,
   getMe,
   disconnectAccountLink,
   getMyExternalActivity,

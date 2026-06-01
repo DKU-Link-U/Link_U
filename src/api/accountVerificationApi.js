@@ -1,4 +1,4 @@
-import { resolveAccessToken } from './httpClient'
+import { requestJson, resolveAccessToken } from './httpClient'
 
 export const GITHUB_OAUTH_MESSAGE_TYPES = {
   success: 'LINK_U_GITHUB_OAUTH_SUCCESS',
@@ -72,6 +72,13 @@ export async function verifyExternalAccount({ platform, accountId, token, access
   }
 
   return result
+}
+
+export async function fetchExternalAccountLinks({ accessToken } = {}) {
+  return requestJson('/api/users/me/account-links', {
+    accessToken,
+    errorMessage: 'Failed to load linked account status.',
+  })
 }
 
 export async function disconnectExternalAccount({ platform, accessToken }) {
