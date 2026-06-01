@@ -1,4 +1,4 @@
-import { resolveAccessToken } from './httpClient'
+import { requestJson, resolveAccessToken } from './httpClient'
 
 function getAuthHeaders(accessToken) {
   const authToken = resolveAccessToken(accessToken)
@@ -24,6 +24,15 @@ function toIntegratedUserResult(result) {
     message: result.message,
     saved: result.saved,
   }
+}
+
+export async function fetchCurrentUser({ accessToken } = {}) {
+  const result = await requestJson('/api/users/me', {
+    accessToken,
+    errorMessage: 'Failed to load current user.',
+  })
+
+  return result.user
 }
 
 export async function fetchIntegratedUserData({ githubId, bojId, dhId }, options = {}) {
