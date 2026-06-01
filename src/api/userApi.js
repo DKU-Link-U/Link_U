@@ -1,4 +1,61 @@
-export async function fetchIntegratedUserData({ githubId, bojId, dhId }) {
+import { resolveAccessToken } from './httpClient'
+
+function getAuthHeaders(accessToken) {
+  const authToken = resolveAccessToken(accessToken)
+
+  return authToken
+    ? { Authorization: `Bearer ${authToken}` }
+    : {}
+}
+
+async function parseJsonResponse(response) {
+  const contentType = response.headers.get('content-type') ?? ''
+
+  return contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : null
+}
+
+function toIntegratedUserResult(result) {
+  return {
+    data: result.data ?? {},
+    errors: result.errors ?? {},
+    partialSuccess: Boolean(result.partialSuccess),
+    message: result.message,
+    saved: result.saved,
+  }
+}
+
+export async function fetchIntegratedUserData({ githubId, bojId, dhId }, options = {}) {
+  const authHeaders = getAuthHeaders(options.accessToken)
+
+  if (authHeaders.Authorization) {
+    let response
+
+    try {
+      response = await fetch('/api/users/me/activity/sync', {
+        method: 'POST',
+        headers: authHeaders,
+      })
+    } catch {
+      throw new Error('백엔드 서버에 연결할 수 없습니다. npm.cmd run dev:server를 실행했는지 확인하세요.')
+    }
+
+    const result = await parseJsonResponse(response)
+
+    if (!response.ok || !result?.success) {
+      const detail = result?.errors
+        ? Object.values(result.errors).map(error => error.message).join(' / ')
+        : ''
+      const error = new Error(detail || result?.message || '외부 활동 데이터를 DB에 저장하지 못했습니다.')
+      error.errors = result?.errors ?? {}
+
+      throw error
+    }
+
+    return toIntegratedUserResult(result)
+  }
+
   const params = new URLSearchParams()
 
   if (githubId?.trim()) params.set('githubId', githubId.trim())
@@ -19,10 +76,7 @@ export async function fetchIntegratedUserData({ githubId, bojId, dhId }) {
     throw new Error('백엔드 서버에 연결할 수 없습니다. npm.cmd run dev:server를 실행했는지 확인하세요.')
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-  const result = contentType.includes('application/json')
-    ? await response.json().catch(() => null)
-    : null
+  const result = await parseJsonResponse(response)
 
   if (!response.ok || !result?.success) {
     const detail = result?.errors
@@ -34,10 +88,5 @@ export async function fetchIntegratedUserData({ githubId, bojId, dhId }) {
     throw error
   }
 
-  return {
-    data: result.data ?? {},
-    errors: result.errors ?? {},
-    partialSuccess: Boolean(result.partialSuccess),
-    message: result.message,
-  }
+  return toIntegratedUserResult(result)
 }
