@@ -1,5 +1,6 @@
 const recruitmentService = require('./recruitmentService');
 const prisma = require('../config/prisma');
+const { createNotification } = require('./notificationService');
 
 function toCommunityStatus(status) {
   return status === 'OPEN' ? 'recruiting' : 'closed';
@@ -59,6 +60,15 @@ function createHttpError(statusCode, message) {
   error.statusCode = statusCode;
   error.publicMessage = message;
   return error;
+}
+
+function toApplicationStatusLabel(status) {
+  return {
+    ACCEPTED: '승인',
+    REJECTED: '거절',
+    PENDING: '검토 중',
+    CANCELED: '취소',
+  }[status] || status;
 }
 
 function toApplicationItem(application) {
@@ -151,6 +161,20 @@ async function applyCommunityRecruitment(type, recruitmentId, applicantId, body 
       applicantId,
       message: body.message || null,
     },
+    include: {
+      applicant: true,
+    },
+  });
+
+  await createNotification({
+    receiverId: recruitment.authorId,
+    type: type === 'STUDY' ? 'STUDY_APPLICATION' : 'PROJECT_APPLICATION',
+    content: `${application.applicant?.nickname || application.applicant?.name || '지원자'}님이 ${recruitment.title}에 지원했습니다.`,
+    metadata: {
+      applicationId: application.id,
+      recruitmentId,
+      applicantId,
+    },
   });
 
   return toApplicationItem(application);
@@ -201,6 +225,18 @@ async function updateApplicationStatus(applicationId, requesterId, status) {
     data: { status: normalizedStatus },
     include: {
       applicant: true,
+      recruitment: true,
+    },
+  });
+
+  await createNotification({
+    receiverId: updatedApplication.applicantId,
+    type: updatedApplication.recruitment.type === 'STUDY' ? 'STUDY_RESULT' : 'PROJECT_RESULT',
+    content: `${updatedApplication.recruitment.title} 지원 결과가 ${toApplicationStatusLabel(updatedApplication.status)} 상태로 변경되었습니다.`,
+    metadata: {
+      applicationId: updatedApplication.id,
+      recruitmentId: updatedApplication.recruitmentId,
+      status: updatedApplication.status,
     },
   });
 

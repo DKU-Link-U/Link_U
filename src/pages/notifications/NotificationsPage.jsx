@@ -2,14 +2,23 @@ import { useState } from 'react'
 import { useNotifications } from '../../store'
 
 const TYPE_META = {
+  MESSAGE:        { label: '쪽지', color: 'bg-green-100 text-green-700', icon: '✉️' },
+  STUDY_APPLICATION: { label: '스터디', color: 'bg-blue-100 text-blue-700', icon: '📚' },
+  PROJECT_APPLICATION: { label: '프로젝트', color: 'bg-purple-100 text-purple-700', icon: '🔧' },
   STUDY_RESULT:   { label: '스터디', color: 'bg-blue-100 text-blue-700',   icon: '📚' },
   PROJECT_RESULT: { label: '프로젝트', color: 'bg-purple-100 text-purple-700', icon: '🔧' },
   RANKING_CHANGE: { label: '랭킹', color: 'bg-yellow-100 text-yellow-700', icon: '📈' },
   SYSTEM:         { label: '시스템', color: 'bg-gray-100 text-gray-600',   icon: '🔔' },
 }
 
-const TABS = ['전체', '스터디', '프로젝트', '랭킹', '시스템']
-const TYPE_MAP = { '스터디': 'STUDY_RESULT', '프로젝트': 'PROJECT_RESULT', '랭킹': 'RANKING_CHANGE', '시스템': 'SYSTEM' }
+const TABS = ['전체', '쪽지', '스터디', '프로젝트', '랭킹', '시스템']
+const TYPE_MAP = {
+  '쪽지': ['MESSAGE'],
+  '스터디': ['STUDY_APPLICATION', 'STUDY_RESULT'],
+  '프로젝트': ['PROJECT_APPLICATION', 'PROJECT_RESULT'],
+  '랭킹': ['RANKING_CHANGE'],
+  '시스템': ['SYSTEM'],
+}
 
 export default function NotificationsPage() {
   const [tab, setTab] = useState('전체')
@@ -22,7 +31,7 @@ export default function NotificationsPage() {
 
   const filtered = tab === '전체'
     ? notifications
-    : notifications.filter(n => n.type === TYPE_MAP[tab])
+    : notifications.filter(n => TYPE_MAP[tab]?.includes(n.type))
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">

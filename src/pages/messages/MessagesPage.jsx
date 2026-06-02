@@ -43,6 +43,7 @@ export default function MessagesPage() {
   const [selected, setSelected] = useState(null)
   const [compose, setCompose] = useState(Boolean(initialReceiver))
   const [newMsg, setNewMsg] = useState({ to: initialReceiver, content: '' })
+  const [sendError, setSendError] = useState(null)
   const currentUser = useCurrentUser()
   const {
     receivedMessages,
@@ -59,15 +60,23 @@ export default function MessagesPage() {
 
   const openMsg = msg => {
     setSelected(msg)
-    markMessageRead(msg.messageId)
+    if (msg.receiverId === currentUser?.userId && !msg.isRead) {
+      markMessageRead(msg.messageId)
+    }
   }
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMsg.to.trim() || !newMsg.content.trim()) return
-    addMessage(newMsg)
-    setTab('보낸 쪽지')
-    setCompose(false)
-    setNewMsg({ to: '', content: '' })
+    setSendError(null)
+
+    try {
+      await addMessage(newMsg)
+      setTab('보낸 쪽지')
+      setCompose(false)
+      setNewMsg({ to: '', content: '' })
+    } catch (error) {
+      setSendError(error.message || '쪽지를 보내지 못했습니다.')
+    }
   }
 
   return (
@@ -94,7 +103,7 @@ export default function MessagesPage() {
             <div className="flex flex-col gap-3">
               <input
                 value={newMsg.to} onChange={e => setNewMsg(m => ({ ...m, to: e.target.value }))}
-                placeholder="받는 사람 닉네임"
+                placeholder="받는 사람 닉네임, 이메일, GitHub ID"
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary/50"
               />
               <textarea
@@ -102,6 +111,9 @@ export default function MessagesPage() {
                 rows={5} placeholder="내용을 입력하세요"
                 className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary/50 resize-none"
               />
+              {sendError && (
+                <p className="text-xs text-red-500">{sendError}</p>
+              )}
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setCompose(false)}
                   className="px-4 py-2 text-xs text-gray-500 hover:text-gray-800">취소</button>
