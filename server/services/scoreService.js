@@ -31,7 +31,6 @@ function calculateScoreFromStats(stats = {}) {
   const bojRating = toNumber(stats.bojRating);
   const rawDreamhackScore = toNumber(stats.dreamhackScore);
   const dreamhackSolvedCount = toNumber(stats.dreamhackSolvedCount);
-  const dreamhackContributionLevel = toNumber(stats.dreamhackContributionLevel);
 
   const implementationScore = Math.round(
     githubCommitCount * 2
@@ -49,8 +48,7 @@ function calculateScoreFromStats(stats = {}) {
 
   const securityScore = Math.round(
     rawDreamhackScore
-      + dreamhackSolvedCount * 20
-      + dreamhackContributionLevel * 50,
+      + dreamhackSolvedCount * 20,
   );
   const dreamhackScore = securityScore;
 
