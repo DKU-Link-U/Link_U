@@ -46,7 +46,6 @@ export async function fetchRankingUsers(params = {}) {
 
 export async function fetchRankingUser(userId) {
   return requestJson(`/api/rankings/users/${encodeURIComponent(userId)}`, {
-    fallback: () => cloneData(mockRankingList.find(user => user.userId === userId) ?? null),
     errorMessage: 'Failed to load ranking user.',
   })
 }

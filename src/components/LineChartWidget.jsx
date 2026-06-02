@@ -97,8 +97,14 @@ function buildPoints(history) {
   })
 }
 
-export default function LineChartWidget() {
-  const { rankingHistory, rating } = useActivityStats()
+export default function LineChartWidget({
+  rankingHistory: rankingHistoryOverride,
+  rating: ratingOverride,
+  emptyMessage = '활동 데이터를 동기화하면 하루 1회 기준 점수 이력이 표시됩니다.',
+} = {}) {
+  const activityStats = useActivityStats()
+  const rankingHistory = rankingHistoryOverride ?? activityStats.rankingHistory
+  const rating = ratingOverride ?? activityStats.rating
   const rawHistory = rankingHistory?.length ? rankingHistory : []
   const current = toNumber(rating.totalRatingScore ?? rawHistory.at(-1)?.score)
   const history = pickRecentTwoWeekHistory(rawHistory)
@@ -137,7 +143,7 @@ export default function LineChartWidget() {
       <div className="flex-1 min-h-[160px]">
         {!hasHistory && (
           <div className="flex h-[150px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center">
-            <p className="text-xs text-gray-400">활동 데이터를 동기화하면 하루 1회 기준 점수 이력이 표시됩니다.</p>
+            <p className="text-xs text-gray-400">{emptyMessage}</p>
           </div>
         )}
 

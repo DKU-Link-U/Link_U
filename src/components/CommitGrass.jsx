@@ -130,8 +130,14 @@ function Tooltip({ day, rect }) {
   )
 }
 
-export default function CommitGrass() {
-  const { commitActivity, syncedPlatforms } = useActivityStats()
+export default function CommitGrass({
+  commitActivity: commitActivityOverride,
+  syncedPlatforms: syncedPlatformsOverride,
+  emptyMessage,
+} = {}) {
+  const activityStats = useActivityStats()
+  const commitActivity = commitActivityOverride ?? activityStats.commitActivity
+  const syncedPlatforms = syncedPlatformsOverride ?? activityStats.syncedPlatforms
   const [tooltip, setTooltip] = useState(null)
   const { weeks, months } = useMemo(() => buildGrid(commitActivity), [commitActivity])
   const stats = useMemo(() => calcStats(weeks), [weeks])
@@ -156,9 +162,9 @@ export default function CommitGrass() {
 
       {!hasCommitActivity && (
         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-500">
-          {hasGitHubSynced
+          {emptyMessage ?? (hasGitHubSynced
             ? '최근 26주 동안 조회된 GitHub 커밋 기록이 없습니다.'
-            : 'GitHub 계정을 연동하고 동기화하면 날짜별 커밋 기록이 표시됩니다.'}
+            : 'GitHub 계정을 연동하고 동기화하면 날짜별 커밋 기록이 표시됩니다.')}
         </div>
       )}
 
