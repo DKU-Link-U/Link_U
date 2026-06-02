@@ -7,6 +7,7 @@ const {
   calculateScoreFromStats,
   getSavedUserScore,
 } = require('./scoreService');
+const { getKoreanRecordedDate, toKoreanDateKey } = require('../utils/koreanTime');
 
 const PLATFORM_LABELS = {
   github: 'GitHub',
@@ -20,27 +21,15 @@ const PLATFORM_ENUMS = {
   dreamhack: 'DREAMHACK',
 };
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-
 function toNumber(value, fallback = 0) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
-function getKstRecordedDate(date = new Date()) {
-  const shiftedDate = new Date(date.getTime() + KST_OFFSET_MS);
-
-  return new Date(Date.UTC(
-    shiftedDate.getUTCFullYear(),
-    shiftedDate.getUTCMonth(),
-    shiftedDate.getUTCDate(),
-  ));
-}
-
 function toRatingHistoryData(userId, stats, syncedAt) {
   return {
     userId,
-    recordedDate: getKstRecordedDate(syncedAt),
+    recordedDate: getKoreanRecordedDate(syncedAt),
     totalRatingScore: toNumber(stats?.totalRatingScore),
     githubCommitCount: toNumber(stats?.githubCommitCount),
     githubPrCount: toNumber(stats?.githubPrCount),
@@ -55,7 +44,7 @@ function toRatingHistoryData(userId, stats, syncedAt) {
 }
 
 function toRatingHistoryDto(item) {
-  const date = item.recordedDate.toISOString().slice(0, 10);
+  const date = toKoreanDateKey(item.recordedDate);
 
   return {
     id: item.id,

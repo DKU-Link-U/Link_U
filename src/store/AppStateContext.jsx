@@ -25,6 +25,7 @@ import {
   mockStudyGroups,
 } from '../models'
 import { canAccessApp } from '../utils/auth'
+import { toKoreanIsoString } from '../utils/koreanTime'
 import { AppStateContext } from './context'
 import { getApplicationEligibility } from './communityEligibility'
 import { mapIntegratedUserData } from './userDataMapper'
@@ -333,7 +334,7 @@ function mergeAccountLinksFromUser(accountLinks, user) {
         ...currentLink,
         username,
         verified: true,
-        verifiedAt: currentLink.verifiedAt ?? new Date().toISOString(),
+        verifiedAt: currentLink.verifiedAt ?? toKoreanIsoString(),
       }
       return links
     }
@@ -900,7 +901,7 @@ export function AppStateProvider({ children }) {
           payload: {
             ...mappedData,
             data: {},
-            loadedAt: new Date().toISOString(),
+            loadedAt: toKoreanIsoString(),
           },
         })
       } catch (error) {
@@ -983,7 +984,7 @@ export function AppStateProvider({ children }) {
             errors: result.errors,
             partialSuccess: result.partialSuccess,
             message: result.message,
-            loadedAt: new Date().toISOString(),
+            loadedAt: toKoreanIsoString(),
           },
         })
 
@@ -1170,7 +1171,7 @@ export function AppStateProvider({ children }) {
       verifyAccountLink: platform =>
         dispatch({
           type: ACTIONS.VERIFY_ACCOUNT_LINK,
-          payload: { platform, verifiedAt: new Date().toISOString() },
+          payload: { platform, verifiedAt: toKoreanIsoString() },
         }),
       disconnectAccountLink: platform =>
         dispatch({ type: ACTIONS.DISCONNECT_ACCOUNT_LINK, payload: platform }),

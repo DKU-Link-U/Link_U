@@ -1,4 +1,5 @@
 import { mockProjects } from '../models'
+import { toKoreanDateKey, toKoreanIsoString } from '../utils/koreanTime'
 import { buildQuery, cloneData, requestJson } from './httpClient'
 
 function createProjectFallback(form, currentUser) {
@@ -17,7 +18,7 @@ function createProjectFallback(form, currentUser) {
       .filter(Boolean),
     applicantList: [],
     status: 'recruiting',
-    createdAt: new Date().toISOString().slice(0, 10),
+    createdAt: toKoreanDateKey(),
   }
 }
 
@@ -25,7 +26,7 @@ function createApplicationFallback(currentUser) {
   return {
     userId: currentUser?.userId ?? 'guest',
     status: 'pending',
-    appliedAt: new Date().toISOString(),
+    appliedAt: toKoreanIsoString(),
   }
 }
 

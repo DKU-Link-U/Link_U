@@ -1,8 +1,5 @@
 const prisma = require('../config/prisma');
-
-function formatDateTime(value) {
-  return value.toISOString().slice(0, 16).replace('T', ' ');
-}
+const { toKoreanDateTime } = require('../utils/koreanTime');
 
 function getUserDisplayName(user) {
   return user?.nickname || user?.name || user?.email || 'Unknown';
@@ -17,7 +14,7 @@ function toMessageDto(message) {
     receiverId: message.receiverId,
     receiverName: getUserDisplayName(message.receiver),
     content: message.content,
-    createdAt: formatDateTime(message.createdAt),
+    createdAt: toKoreanDateTime(message.createdAt),
     isRead: message.isRead,
   };
 }

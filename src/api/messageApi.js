@@ -1,4 +1,5 @@
 import { mockMessages } from '../models'
+import { toKoreanDateTime } from '../utils/koreanTime'
 import { buildQuery, cloneData, requestJson } from './httpClient'
 
 function createMessageFallback(message, currentUser) {
@@ -11,7 +12,7 @@ function createMessageFallback(message, currentUser) {
     receiverId: message.receiverId ?? message.to,
     receiverName: message.to,
     content: message.content,
-    createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    createdAt: toKoreanDateTime(),
     isRead: true,
   }
 }

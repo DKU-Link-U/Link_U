@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { routeTo } from '../routes/paths'
+import { toKoreanDateKey } from '../utils/koreanTime'
 
 const STATUS_META = {
   pending: {
@@ -29,15 +30,9 @@ function getApplicantName(application) {
 
 function formatAppliedAt(value) {
   if (!value) return ''
-  const date = new Date(value)
+  const dateKey = toKoreanDateKey(value)
 
-  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10)
-
-  return date.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  return dateKey ? dateKey.replaceAll('-', '.') : String(value).slice(0, 10)
 }
 
 function StatusBadge({ status }) {
