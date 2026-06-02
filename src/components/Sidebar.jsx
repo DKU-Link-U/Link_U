@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { ROUTE_PATHS } from '../routes/paths'
 import { useAppState } from '../store'
+import { getIntegratedTier } from '../utils/ratingTier'
 
 const NAV_GROUPS = [
   {
@@ -90,6 +91,12 @@ const NAV_GROUPS = [
   },
 ]
 
+function formatBadgeCount(count) {
+  const numericCount = Number(count) || 0
+
+  return numericCount > 99 ? '99+' : String(numericCount)
+}
+
 function NavItem({ to, label, icon, badge, exact }) {
   return (
     <NavLink
@@ -106,8 +113,8 @@ function NavItem({ to, label, icon, badge, exact }) {
       <span className="flex-shrink-0">{icon}</span>
       <span className="flex-1 truncate">{label}</span>
       {badge > 0 && (
-        <span className="ml-auto flex-shrink-0 bg-red-500 text-white text-[10px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center">
-          {badge}
+        <span className="ml-auto flex h-5 min-w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
+          {formatBadgeCount(badge)}
         </span>
       )}
     </NavLink>
@@ -120,12 +127,15 @@ export default function Sidebar() {
     rating,
     unreadMessageCount,
     unreadNotificationCount,
+    syncedPlatforms,
   } = useAppState()
 
   const badges = {
     messages: unreadMessageCount,
     notifications: unreadNotificationCount,
   }
+  const hasSyncedScore = Object.values(syncedPlatforms).some(Boolean) || Number(rating.totalRatingScore) > 0
+  const sidebarTier = hasSyncedScore ? getIntegratedTier(rating.totalRatingScore) : '연동 필요'
 
   return (
     <aside className="w-56 min-h-screen flex flex-col bg-primary text-white shadow-xl flex-shrink-0">
@@ -181,7 +191,7 @@ export default function Sidebar() {
               {currentUser?.nickname ?? 'Guest'}
             </p>
             <p className="text-[10px] text-white/40">
-              {rating.baekjoonTier} · {rating.totalRatingScore}점
+              {sidebarTier} · {rating.totalRatingScore}점
             </p>
           </div>
         </NavLink>
