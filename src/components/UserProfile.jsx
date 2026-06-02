@@ -1,7 +1,14 @@
 import { useAppState } from '../store'
 
+function formatAffiliation(user) {
+  return [user?.department, user?.year ? `${user.year}학년` : null]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 export default function UserProfile() {
   const { currentUser, rating } = useAppState()
+  const affiliation = formatAffiliation(currentUser)
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-6 flex items-center gap-6">
@@ -20,7 +27,9 @@ export default function UserProfile() {
       <div className="flex-1">
         <p className="text-xs text-gray-400 font-medium mb-0.5">{currentUser?.university}</p>
         <h2 className="text-xl font-bold text-gray-800">{currentUser?.nickname}</h2>
-        <p className="text-sm text-gray-500 mt-0.5">{currentUser?.department} · {currentUser?.year}학년</p>
+        {affiliation && (
+          <p className="text-sm text-gray-500 mt-0.5">{affiliation}</p>
+        )}
       </div>
 
       {/* 랭킹 점수 */}

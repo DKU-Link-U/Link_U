@@ -57,6 +57,7 @@ model User {
   nickname     String?
   department   String?
   studentId    String?
+  year         Int?
   oneLiner     String?
   techStack    String?
   interestArea String?

@@ -53,6 +53,7 @@ function createProfile({ userId, currentUser, rating, rankingUsers }) {
       userId,
       nickname: currentUser.nickname,
       department: currentUser.department,
+      year: currentUser.year,
       university: currentUser.university,
       oneLiner: currentUser.oneLiner,
       interestArea: currentUser.interestArea,
@@ -77,6 +78,12 @@ function createProfile({ userId, currentUser, rating, rankingUsers }) {
   }
 }
 
+function formatAffiliation(profile) {
+  return [profile.department, profile.year ? `${profile.year}학년` : null]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 export default function UserProfilePage() {
   const { userId } = useParams()
   const { currentUser, rating } = useAppState()
@@ -93,6 +100,8 @@ export default function UserProfilePage() {
       </div>
     )
   }
+
+  const affiliation = formatAffiliation(profile)
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -121,7 +130,9 @@ export default function UserProfilePage() {
                   <span className="text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">나</span>
                 )}
               </div>
-              <p className="text-sm text-gray-500 mt-1">{profile.department}</p>
+              {affiliation && (
+                <p className="text-sm text-gray-500 mt-1">{affiliation}</p>
+              )}
             </div>
           </div>
 

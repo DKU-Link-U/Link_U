@@ -27,6 +27,7 @@ function toSafeUser(user) {
     nickname,
     department: user.department,
     studentId: user.studentId,
+    year: user.year,
     oneLiner: user.oneLiner,
     techStack: user.techStack,
     interestArea: user.interestArea,
