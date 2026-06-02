@@ -50,6 +50,20 @@ function toOptionalPositiveInt(value, fieldName) {
   return number;
 }
 
+function toOptionalNonNegativeInt(value, fieldName) {
+  if (value === undefined || value === null || value === '') {
+    return value === undefined ? undefined : 0;
+  }
+
+  const number = Number(value);
+
+  if (!Number.isInteger(number) || number < 0) {
+    throw createHttpError(400, `${fieldName}은 0 이상의 정수여야 합니다.`);
+  }
+
+  return number;
+}
+
 function normalizeCreateInput(body) {
   const title = body.title?.trim();
   const description = body.description?.trim();
@@ -72,6 +86,7 @@ function normalizeCreateInput(body) {
     type: body.type,
     requiredSkills: toStringArray(body.requiredSkills, 'requiredSkills') || [],
     requiredRoles: toStringArray(body.requiredRoles, 'requiredRoles') || [],
+    requiredRating: toOptionalNonNegativeInt(body.requiredRating, 'requiredRating') ?? 0,
     maxMembers: toOptionalPositiveInt(body.maxMembers, 'maxMembers'),
     startDate: toOptionalDate(body.startDate, 'startDate'),
     endDate: toOptionalDate(body.endDate, 'endDate'),
@@ -119,12 +134,14 @@ function normalizeUpdateInput(body) {
 
   const requiredSkills = toStringArray(body.requiredSkills, 'requiredSkills');
   const requiredRoles = toStringArray(body.requiredRoles, 'requiredRoles');
+  const requiredRating = toOptionalNonNegativeInt(body.requiredRating, 'requiredRating');
   const maxMembers = toOptionalPositiveInt(body.maxMembers, 'maxMembers');
   const startDate = toOptionalDate(body.startDate, 'startDate');
   const endDate = toOptionalDate(body.endDate, 'endDate');
 
   if (requiredSkills !== undefined) data.requiredSkills = requiredSkills;
   if (requiredRoles !== undefined) data.requiredRoles = requiredRoles;
+  if (requiredRating !== undefined) data.requiredRating = requiredRating;
   if (maxMembers !== undefined) data.maxMembers = maxMembers;
   if (startDate !== undefined) data.startDate = startDate;
   if (endDate !== undefined) data.endDate = endDate;
