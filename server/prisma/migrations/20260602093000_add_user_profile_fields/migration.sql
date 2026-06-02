@@ -1,0 +1,4 @@
+ALTER TABLE "User" ADD COLUMN "oneLiner" TEXT;
+ALTER TABLE "User" ADD COLUMN "techStack" TEXT;
+ALTER TABLE "User" ADD COLUMN "interestArea" TEXT;
+ALTER TABLE "User" ADD COLUMN "profileImage" TEXT;

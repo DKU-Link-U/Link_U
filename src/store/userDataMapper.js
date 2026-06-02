@@ -103,13 +103,6 @@ export function mapIntegratedUserData(data, previousState, ids) {
     ...previousRating,
   }
 
-  if (githubProfile) {
-    user.userId = previousUser?.userId ?? githubProfile.login ?? ids.githubId
-    user.nickname = githubProfile.name || githubProfile.login || previousUser?.nickname
-    user.profileImage = githubProfile.avatar_url ?? previousUser?.profileImage
-    user.oneLiner = githubProfile.bio || previousUser?.oneLiner
-  }
-
   if (githubStats) {
     rating.githubCommitCount = toNumber(githubStats.totalCommits)
     rating.githubPrCount = toNumber(githubStats.totalPRs)

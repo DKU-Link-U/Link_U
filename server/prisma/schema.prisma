@@ -47,6 +47,10 @@ model User {
   nickname    String?
   department  String?
   studentId   String?
+  oneLiner    String?
+  techStack   String?
+  interestArea String?
+  profileImage String?
   githubId    String?
   bojId       String?
   dreamhackId String?
