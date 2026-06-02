@@ -51,26 +51,28 @@ enum NotificationType {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  name        String?
-  nickname    String?
-  department  String?
-  studentId   String?
-  oneLiner    String?
-  techStack   String?
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String?
+  nickname     String?
+  department   String?
+  studentId    String?
+  oneLiner     String?
+  techStack    String?
   interestArea String?
   profileImage String?
-  githubId    String?
-  bojId       String?
-  dreamhackId String?
-  role        UserRole @default(STUDENT)
+  githubId     String?
+  bojId        String?
+  dreamhackId  String?
+  role         UserRole @default(STUDENT)
 
   recruitments      Recruitment[]              @relation("RecruitmentAuthor")
   applications      Application[]
   activitySnapshots ExternalActivitySnapshot[]
   activityStats     UserActivityStats?
   ratingHistory     UserRatingHistory[]
+  score             UserScore?
+  scoreSnapshots    UserScoreSnapshot[]
   sentMessages      Message[]                  @relation("MessageSender")
   receivedMessages  Message[]                  @relation("MessageReceiver")
   notifications     Notification[]             @relation("NotificationReceiver")
@@ -139,21 +141,75 @@ model ExternalActivitySnapshot {
 }
 
 model UserActivityStats {
-  id                   String    @id @default(uuid())
-  userId               String    @unique
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  githubCommitCount    Int       @default(0)
-  githubPrCount        Int       @default(0)
-  bojSolvedCount       Int       @default(0)
-  bojTierNumber        Int?
-  bojRating            Int?
-  dreamhackScore       Int       @default(0)
-  dreamhackSolvedCount Int       @default(0)
-  dreamhackRank        Int?
-  totalRatingScore     Int       @default(0)
-  lastSyncedAt         DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                         String    @id @default(uuid())
+  userId                     String    @unique
+  user                       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubCommitCount          Int       @default(0)
+  githubPrCount              Int       @default(0)
+  githubPublicRepoCount      Int       @default(0)
+  bojSolvedCount             Int       @default(0)
+  bojTierNumber              Int?
+  bojRating                  Int?
+  bojRank                    Int?
+  dreamhackScore             Int       @default(0)
+  dreamhackSolvedCount       Int       @default(0)
+  dreamhackRank              Int?
+  dreamhackContributionLevel Int       @default(0)
+  dreamhackContributionRank  Int?
+  totalRatingScore           Int       @default(0)
+  lastSyncedAt               DateTime?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+}
+
+model UserScore {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalScore          Int      @default(0)
+  githubScore         Int      @default(0)
+  bojScore            Int      @default(0)
+  dreamhackScore      Int      @default(0)
+  algorithmScore      Int      @default(0)
+  securityScore       Int      @default(0)
+  implementationScore Int      @default(0)
+  collaborationScore  Int      @default(0)
+  problemSolvingScore Int      @default(0)
+  activityScore       Int      @default(0)
+  fieldRawScores      Json
+  fieldDisplayScores  Json
+  scoreVersion        String   @default("2026-06-02-v1")
+  calculatedAt        DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model UserScoreSnapshot {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalScore          Int      @default(0)
+  githubScore         Int      @default(0)
+  bojScore            Int      @default(0)
+  dreamhackScore      Int      @default(0)
+  algorithmScore      Int      @default(0)
+  securityScore       Int      @default(0)
+  implementationScore Int      @default(0)
+  collaborationScore  Int      @default(0)
+  problemSolvingScore Int      @default(0)
+  activityScore       Int      @default(0)
+  fieldRawScores      Json
+  fieldDisplayScores  Json
+  rankOverall         Int?
+  rankDepartment      Int?
+  scoreDelta          Int      @default(0)
+  rankDelta           Int?
+  scoreVersion        String   @default("2026-06-02-v1")
+  calculatedAt        DateTime @default(now())
+  createdAt           DateTime @default(now())
+
+  @@index([userId, calculatedAt])
+  @@index([totalScore])
 }
 
 model UserRatingHistory {

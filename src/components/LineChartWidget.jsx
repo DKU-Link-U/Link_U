@@ -68,15 +68,15 @@ export default function LineChartWidget() {
               <line key={y} x1="12" y1={y} x2="288" y2={y} stroke="#eef2ff" strokeWidth="1" />
             ))}
             <polyline points={path} fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            {points.map(point => (
-              <circle key={point.date ?? point.month} cx={point.x} cy={point.y} r="3.5" fill="#4f46e5" />
+            {points.map((point, index) => (
+              <circle key={`${point.date ?? point.month}-${index}`} cx={point.x} cy={point.y} r="3.5" fill="#4f46e5" />
             ))}
           </svg>
         )}
 
         <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
-          {history.map(item => (
-            <div key={item.date ?? item.month} className="text-center">
+          {history.map((item, index) => (
+            <div key={`${item.date ?? item.month}-${index}`} className="text-center">
               <p className="text-[10px] text-gray-400">{item.month ?? item.date}</p>
               <p className="text-[10px] font-semibold text-gray-700">{item.score}</p>
             </div>

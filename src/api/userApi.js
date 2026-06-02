@@ -119,3 +119,10 @@ export async function fetchIntegratedUserData({ githubId, bojId, dhId }, options
 
   return toIntegratedUserResult(result)
 }
+
+export async function fetchSavedExternalActivity(options = {}) {
+  return requestJson('/api/users/me/activity', {
+    accessToken: options.accessToken,
+    errorMessage: 'Failed to load saved external activity.',
+  })
+}

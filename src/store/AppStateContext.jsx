@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
 import {
   applyProject as applyProjectRequest,
   applyStudy as applyStudyRequest,
@@ -14,7 +14,7 @@ import {
   sendMessage as sendMessageRequest,
 } from '../api'
 import { clearStoredAccessToken, getStoredAccessToken, setStoredAccessToken } from '../api/httpClient'
-import { fetchCurrentUser, fetchIntegratedUserData, fetchRatingHistory } from '../api/userApi'
+import { fetchCurrentUser, fetchIntegratedUserData, fetchRatingHistory, fetchSavedExternalActivity } from '../api/userApi'
 import {
   mockMessages,
   mockNotifications,
@@ -43,6 +43,7 @@ const ACTIONS = {
   LOAD_RATING_HISTORY_SUCCESS: 'rating/historyLoadSuccess',
   LOAD_EXTERNAL_PROFILE_START: 'externalProfile/loadStart',
   LOAD_EXTERNAL_PROFILE_SUCCESS: 'externalProfile/loadSuccess',
+  LOAD_SAVED_ACTIVITY_SUCCESS: 'externalProfile/loadSavedActivitySuccess',
   LOAD_EXTERNAL_PROFILE_ERROR: 'externalProfile/loadError',
   CLEAR_EXTERNAL_PROFILE_ERROR: 'externalProfile/clearError',
   SET_AUTH_TOKEN: 'auth/setToken',
@@ -521,6 +522,22 @@ function appStateReducer(state, action) {
         },
       }
 
+    case ACTIONS.LOAD_SAVED_ACTIVITY_SUCCESS:
+      return {
+        ...state,
+        rating: action.payload.rating,
+        activity: {
+          ...state.activity,
+          ...action.payload.activity,
+        },
+        externalProfile: {
+          ...state.externalProfile,
+          data: action.payload.data,
+          error: null,
+          loadedAt: action.payload.loadedAt,
+        },
+      }
+
     case ACTIONS.LOAD_EXTERNAL_PROFILE_ERROR:
       return {
         ...state,
@@ -690,6 +707,11 @@ function appStateReducer(state, action) {
 
 export function AppStateProvider({ children }) {
   const [state, dispatch] = useReducer(appStateReducer, undefined, createInitialState)
+  const stateRef = useRef(state)
+
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   useEffect(() => {
     persistState(state)
@@ -764,8 +786,12 @@ export function AppStateProvider({ children }) {
     }
   }, [state.auth.isAuthenticated, state.auth.accessToken, state.auth.user?.id])
 
+  const isAuthenticated = state.auth.isAuthenticated
+  const savedActivityAccessToken = state.auth.accessToken
+  const savedActivityUser = state.auth.user
+
   useEffect(() => {
-    if (!state.auth.isAuthenticated) return
+    if (!isAuthenticated) return
 
     let canceled = false
 
@@ -790,16 +816,16 @@ export function AppStateProvider({ children }) {
     return () => {
       canceled = true
     }
-  }, [state.auth.isAuthenticated])
+  }, [isAuthenticated])
 
   useEffect(() => {
-    if (!state.auth.isAuthenticated || !state.auth.accessToken) return
+    if (!isAuthenticated || !savedActivityAccessToken) return
 
     let canceled = false
 
     async function loadRatingHistory() {
       try {
-        const history = await fetchRatingHistory({ accessToken: state.auth.accessToken })
+        const history = await fetchRatingHistory({ accessToken: savedActivityAccessToken })
 
         if (!canceled) {
           dispatch({ type: ACTIONS.LOAD_RATING_HISTORY_SUCCESS, payload: history })
@@ -814,7 +840,46 @@ export function AppStateProvider({ children }) {
     return () => {
       canceled = true
     }
-  }, [state.auth.isAuthenticated, state.auth.accessToken, state.auth.user?.id])
+  }, [isAuthenticated, savedActivityAccessToken, savedActivityUser?.id])
+
+  useEffect(() => {
+    if (!isAuthenticated || !savedActivityAccessToken) return
+
+    let canceled = false
+
+    async function loadSavedActivity() {
+      try {
+        const saved = await fetchSavedExternalActivity({ accessToken: savedActivityAccessToken })
+
+        if (canceled) return
+
+        const user = savedActivityUser
+        const ids = {
+          githubId: user?.githubId ?? '',
+          bojId: user?.bojId ?? '',
+          dhId: user?.dreamhackId ?? '',
+        }
+        const mappedData = mapIntegratedUserData({}, stateRef.current, ids, saved)
+
+        dispatch({
+          type: ACTIONS.LOAD_SAVED_ACTIVITY_SUCCESS,
+          payload: {
+            ...mappedData,
+            data: {},
+            loadedAt: new Date().toISOString(),
+          },
+        })
+      } catch (error) {
+        console.warn('[Link_U] 저장된 활동 점수를 불러오지 못했습니다.', error)
+      }
+    }
+
+    loadSavedActivity()
+
+    return () => {
+      canceled = true
+    }
+  }, [isAuthenticated, savedActivityAccessToken, savedActivityUser])
 
   const value = useMemo(() => {
     const currentUser = state.auth.user
@@ -863,8 +928,8 @@ export function AppStateProvider({ children }) {
 
       try {
         const result = await fetchIntegratedUserData(ids, { accessToken })
-        const mappedData = mapIntegratedUserData(result.data, state, ids)
-        let ratingHistory = state.rating.history ?? []
+        const mappedData = mapIntegratedUserData(result.data, state, ids, result.saved)
+        let ratingHistory = mappedData.rating.history ?? state.rating.history ?? []
 
         if (accessToken) {
           try {
