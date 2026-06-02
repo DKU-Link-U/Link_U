@@ -1,6 +1,8 @@
 import { useActivityStats } from '../store'
 
 function buildPoints(history) {
+  if (history.length === 0) return []
+
   const scores = history.map(item => Number(item.score ?? 0))
   const min = Math.min(...scores)
   const max = Math.max(...scores)
@@ -21,6 +23,7 @@ function buildPoints(history) {
 export default function LineChartWidget() {
   const { rankingHistory, rating } = useActivityStats()
   const history = rankingHistory?.length ? rankingHistory : []
+  const hasHistory = history.length > 0
   const points = buildPoints(history)
   const path = points.map(point => `${point.x},${point.y}`).join(' ')
   const current = history.at(-1)?.score ?? rating.totalRatingScore
@@ -53,20 +56,28 @@ export default function LineChartWidget() {
       </div>
 
       <div className="flex-1 min-h-[160px]">
-        <svg className="w-full h-[150px]" viewBox="0 0 300 120" preserveAspectRatio="none" role="img" aria-label="Ranking score trend line chart">
-          {[24, 61, 98].map(y => (
-            <line key={y} x1="12" y1={y} x2="288" y2={y} stroke="#eef2ff" strokeWidth="1" />
-          ))}
-          <polyline points={path} fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          {points.map(point => (
-            <circle key={point.month} cx={point.x} cy={point.y} r="3.5" fill="#4f46e5" />
-          ))}
-        </svg>
+        {!hasHistory && (
+          <div className="flex h-[150px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center">
+            <p className="text-xs text-gray-400">활동 데이터를 동기화하면 하루 1회 기준 점수 이력이 표시됩니다.</p>
+          </div>
+        )}
+
+        {hasHistory && (
+          <svg className="w-full h-[150px]" viewBox="0 0 300 120" preserveAspectRatio="none" role="img" aria-label="Ranking score trend line chart">
+            {[24, 61, 98].map(y => (
+              <line key={y} x1="12" y1={y} x2="288" y2={y} stroke="#eef2ff" strokeWidth="1" />
+            ))}
+            <polyline points={path} fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            {points.map(point => (
+              <circle key={point.date ?? point.month} cx={point.x} cy={point.y} r="3.5" fill="#4f46e5" />
+            ))}
+          </svg>
+        )}
 
         <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
           {history.map(item => (
-            <div key={item.month} className="text-center">
-              <p className="text-[10px] text-gray-400">{item.month}</p>
+            <div key={item.date ?? item.month} className="text-center">
+              <p className="text-[10px] text-gray-400">{item.month ?? item.date}</p>
               <p className="text-[10px] font-semibold text-gray-700">{item.score}</p>
             </div>
           ))}

@@ -1,4 +1,4 @@
-import { requestJson, resolveAccessToken } from './httpClient'
+import { buildQuery, requestJson, resolveAccessToken } from './httpClient'
 
 function getAuthHeaders(accessToken) {
   const authToken = resolveAccessToken(accessToken)
@@ -44,6 +44,15 @@ export async function updateCurrentUserProfile(profile, { accessToken } = {}) {
   })
 
   return result.user
+}
+
+export async function fetchRatingHistory({ accessToken, limit = 30 } = {}) {
+  const result = await requestJson(`/api/users/me/activity/history${buildQuery({ limit })}`, {
+    accessToken,
+    errorMessage: 'Failed to load rating history.',
+  })
+
+  return result.history ?? []
 }
 
 export async function fetchIntegratedUserData({ githubId, bojId, dhId }, options = {}) {
