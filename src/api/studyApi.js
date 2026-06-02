@@ -43,6 +43,22 @@ export async function fetchStudyDetail(groupId) {
   })
 }
 
+export async function fetchStudyApplications(groupId, { accessToken } = {}) {
+  return requestJson(`/api/studies/${encodeURIComponent(groupId)}/applications`, {
+    accessToken,
+    fallback: () => [],
+    errorMessage: 'Failed to load study applications.',
+  })
+}
+
+export async function fetchMyStudies({ accessToken, fallback } = {}) {
+  return requestJson('/api/users/me/studies', {
+    accessToken,
+    fallback,
+    errorMessage: 'Failed to load my studies.',
+  })
+}
+
 export async function createStudy(form, { currentUser, accessToken } = {}) {
   return requestJson('/api/studies', {
     method: 'POST',

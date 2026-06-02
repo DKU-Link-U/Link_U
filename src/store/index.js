@@ -9,6 +9,8 @@ export {
   useCurrentUser,
   useExternalProfile,
   useMessages,
+  useMyProjectsData,
+  useMyStudiesData,
   useNotifications,
   useProjects,
   useRanking,

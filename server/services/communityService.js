@@ -200,6 +200,67 @@ async function getCommunityApplications(type, recruitmentId, requesterId) {
   return applications.map(toApplicationItem);
 }
 
+async function getMyCommunityRecruitments(type, userId) {
+  const recruitments = await prisma.recruitment.findMany({
+    where: {
+      type,
+      OR: [
+        { authorId: userId },
+        {
+          applications: {
+            some: {
+              applicantId: userId,
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      author: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          nickname: true,
+          department: true,
+        },
+      },
+      _count: {
+        select: {
+          applications: true,
+        },
+      },
+      applications: {
+        where: {
+          applicantId: userId,
+        },
+        include: {
+          applicant: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return recruitments.map((recruitment) => {
+    const myApplication = recruitment.applications[0]
+      ? toApplicationItem(recruitment.applications[0])
+      : null;
+
+    return {
+      ...toCommunityItem(recruitment),
+      role: recruitment.authorId === userId ? 'owner' : 'applicant',
+      myApplication,
+      applicationStatus: myApplication?.status || null,
+    };
+  });
+}
+
 async function updateApplicationStatus(applicationId, requesterId, status) {
   const normalizedStatus = String(status || '').toUpperCase();
 
@@ -249,5 +310,6 @@ module.exports = {
   getCommunityApplications,
   getCommunityRecruitmentById,
   getCommunityRecruitments,
+  getMyCommunityRecruitments,
   updateApplicationStatus,
 };
