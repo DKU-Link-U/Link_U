@@ -53,33 +53,33 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-gray-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-6 py-10">
-        <section className="grid w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl md:grid-cols-[1.1fr_0.9fr]">
-          <div className="flex min-h-[420px] flex-col justify-between bg-primary px-8 py-8 text-white">
-            <div>
-              <div className="mb-8 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-lg font-bold">
-                  L
-                </div>
-                <div>
-                  <p className="text-lg font-bold">Link-U</p>
-                  <p className="text-xs text-white/60">Dankook verified workspace</p>
-                </div>
+    <main className="flex min-h-screen w-screen items-center justify-center bg-slate-50 px-6 py-10 text-gray-900">
+      <section className="grid w-full max-w-4xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl md:grid-cols-2">
+        <div className="flex min-h-[420px] flex-col justify-center bg-primary px-8 py-10 text-white md:px-10">
+          <div className="mx-auto w-full max-w-sm">
+            <div className="mb-10 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-lg font-bold">
+                L
               </div>
-              <h1 className="text-2xl font-bold leading-tight">
-                단국대학교 계정으로 인증해주세요.
-              </h1>
-              <p className="mt-4 max-w-md text-sm leading-6 text-white/70">
-                인증된 단국대 Google 계정만 대시보드, 커뮤니티, 계정 연동 기능에 접근할 수 있습니다.
-              </p>
+              <div>
+                <p className="text-lg font-bold">Link-U</p>
+                <p className="text-xs text-white/60">Dankook verified workspace</p>
+              </div>
             </div>
-            <p className="text-xs text-white/50">
+            <h1 className="text-2xl font-bold leading-tight">
+              단국대학교 계정으로 인증해주세요.
+            </h1>
+            <p className="mt-4 text-sm leading-6 text-white/70">
+              인증된 단국대 Google 계정만 대시보드, 커뮤니티, 계정 연동 기능에 접근할 수 있습니다.
+            </p>
+            <p className="mt-12 text-xs text-white/50">
               허용 도메인: {DANKOOK_EMAIL_DOMAIN}
             </p>
           </div>
+        </div>
 
-          <div className="flex min-h-[420px] flex-col justify-center px-8 py-10">
+        <div className="flex min-h-[420px] flex-col justify-center px-8 py-10 md:px-10">
+          <div className="mx-auto w-full max-w-sm">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary">
               Sign in
             </p>
@@ -112,8 +112,8 @@ export default function LoginPage() {
               로그인 후 마이페이지에서 GitHub 연동을 완료하면 계정 정보가 DB에 저장됩니다.
             </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   )
 }
