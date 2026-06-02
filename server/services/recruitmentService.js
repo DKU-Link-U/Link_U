@@ -148,6 +148,15 @@ function includeAuthor() {
         applications: true,
       },
     },
+    applications: {
+      where: {
+        status: 'ACCEPTED',
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    },
   };
 }
 
